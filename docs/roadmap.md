@@ -3,7 +3,7 @@ Status: P0-002 ist implementiert und getestet. Die weiteren Meilensteine sind ge
 
 | ID | Ziel | Abnahmekriterium | Status |
 |---|---|---|---|
-| P0-001 | Interaktive Karte | Teststadt, Zoom 2D/3D, Pan, Marker, Ortsdetails; MockTransport statt Spielregeln im Client | geplant |
+| P0-001 | Interaktive Karte | Teststadt, Zoom 2D/3D, Pan, echte Marker/Spielzeit aus SimulationClient über beide bestehenden Transporte, Ortsdetails | geplant |
 | P0-002 | Dual-Runtime-Schnitt | C++-Core nativ und WASM, gemeinsamer Nachrichtenvertrag, zwei Sessions mit exklusiver Charakterübernahme; dasselbe UI über Worker und lokalen WebSocket | erledigt |
 | P1 | Lebendige Welt | Spieluhr, Tag/Nacht, Wegegraph, Bewegung, fünf persistente Bewohner und Ambient-Passanten | geplant |
 | P2 | Erste RPG-Schleife | Geld/Konto, Inventar, Shop, Textmission, versioniertes Speichern/Laden | geplant |
@@ -11,4 +11,4 @@ Status: P0-002 ist implementiert und getestet. Die weiteren Meilensteine sind ge
 | P4 | Mehr Spieltiefe | Utility AI, Minispiele, NPC-Reaktionen, weitere Missionen und optimierte Simulationsauflösung | später |
 | P5 | Öffentlicher Multiplayer | Auth, Rollen/Privatsphäre, Reconnect, Sicherheit, Skalierung, Hosting und konkrete Mehrspielerregeln | zurückgestellt |
 
-Die Ergebnisse des Dual-Runtime-Schnitts stehen in [P0-002](../tasks/P0-002-dual-runtime.md). Die interaktive Karte ist unter [P0-001](../tasks/P0-001-map-prototype.md) geplant. P2 bleibt der erste RPG-Loop. Öffentlicher Multiplayer bleibt P5 vorbehalten.
+Die Ergebnisse des Dual-Runtime-Schnitts stehen in [P0-002](../tasks/P0-002-dual-runtime.md). Als nächster Schnitt ist die interaktive Karte unter [P0-001](../tasks/P0-001-map-prototype.md) geplant. P2 bleibt der erste RPG-Loop. Öffentlicher Multiplayer bleibt P5 vorbehalten.
