@@ -45,3 +45,6 @@ World Studio wächst vom Kartengenerator zur vollständigen lokalen Content-Auth
 ## Verbindlicher erster Umsetzungsschnitt (27.11.2026)
 
 `woc_osm.import_world` verarbeitet lokales PBF und WGS84-Landpolygone zu validierten City-v3-/Visual-v2-Paketen in Natural oder Island. Die Schnittstelle liefert Fortschrittsphasen und einen strukturierten Qualitätsbericht. Der Browser zeigt für diese Pakete den OpenStreetMap-Hinweis. P1-007 bindet dieselbe Importfunktion ein. [Importanleitung](../../tools/world-studio/README.md) · [P1-006 und Messungen](../../tasks/P1-006-osm-world-importer.md)
+
+## Editor-Roadmap
+Der phasenweise Gameplay-Ausbau ist in [Studio-Content und Editor-Roadmap](world-studio-content.md) festgehalten. P1-007 bleibt ausschließlich Karteneditor; neue Gameplay-Module folgen der jeweils vorhandenen Runtime-Mechanik.

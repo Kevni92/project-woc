@@ -1,22 +1,25 @@
 # Roadmap
-Status. P0-001, P0-002, P1-001, P1-004, P1-005 und P1-006 sind implementiert und getestet.
+Status 27.11.2026: P0-001, P0-002, P1-001, P1-004, P1-005 und P1-006 implementiert und laut Aufgabenprotokollen getestet. P1-007 laut Nutzer in lokaler Bearbeitung; kein abgeschlossener Implementierungsstand in main bestätigt. Die folgenden Aufgaben sind geplant, keine Implementierungsergebnisse.
 
 | ID | Ziel | Abnahmekriterium | Status |
 |---|---|---|---|
-| P0-001 | Interaktive Karte | Teststadt, Zoom 2D/3D, Pan, echte Marker/Spielzeit aus SimulationClient über beide bestehenden Transporte, Ortsdetails | erledigt |
-| P0-002 | Dual-Runtime-Schnitt | C++-Core nativ und WASM, gemeinsamer Nachrichtenvertrag, zwei Sessions mit exklusiver Charakterübernahme; dasselbe UI über Worker und lokalen WebSocket | erledigt |
-| [P1-001](../tasks/P1-001-movement.md) | Wege und Reisen | Autoritativer Graph, Routenvorschau, Fußreise und Ankunft über beide Transporte | erledigt |
-| [P1-004](../tasks/P1-004-map-visual-upgrade.md) | Weltkarte 2.0 | Fullscreen-HUD, 360°-Kamera, getrenntes Visual-Format, Gebäude/Küste/Straßen | erledigt |
-| [P1-005](../tasks/P1-005-world-package-loader.md) | Kartenpakete | Breakwater und Cove werden nativ, im WASM-Host und im Browser aus validierten Paketen zur Laufzeit geladen | erledigt |
-| [P1-006](../tasks/P1-006-osm-world-importer.md) | Geodatenimport | Offline-OSM → spielbares City-v3-Paket, exakte AOI, Natural/Island, 1 × 1-km-Import und 5 × 5-km-Messlauf | erledigt. Zwei Bremer Pakete exportiert, dichter 5 × 5-km-Ausschnitt am Byte-Limit |
-| [P1-007](../tasks/P1-007-world-studio.md) | World Studio | Lokaler Karteneditor mit Rechteck/Freihand und Export | geplant |
-| [P1-002](../tasks/P1-002-character-routines.md) | Bewohner und Tagespläne | Datengetriebene Resident-Definitionen/Startinstanzen, Scheduler, Arbeit und Heimkehr | geplant |
-| [P1-003](../tasks/P1-003-npc-behavior.md) | NPC-Verhalten | Einfache Entscheidungen, Ambient-Population, Messungen | geplant |
-| P2 | Erste RPG-Schleife | Datengetriebene Orte/Items/Aktionen/Textmission, erste Content-Editoren, Speichern/Laden | geplant |
-| P3 | Besitz und Alltag | Fahrzeug-/Besitz-/Jobdefinitionen und passende Studio-Editoren, Beziehungen/Attribute | später |
-| P4 | Mehr Spieltiefe | Utility AI, Minispiele, NPC-Reaktionen, Event-/Missionsgraphen und optimierte Simulationsauflösung | später |
-| P5 | Öffentlicher Multiplayer | Auth, Rollen/Privatsphäre, Reconnect, Sicherheit, Skalierung, Hosting und konkrete Mehrspielerregeln | zurückgestellt |
+| [P0-001](../tasks/P0-001-map-prototype.md) | Interaktive Karte | Teststadt, Zoom 2D/3D, Pan, Ortsdetails | erledigt |
+| [P0-002](../tasks/P0-002-dual-runtime.md) | Dual Runtime | C++-Core nativ/WASM, gemeinsamer Vertrag, Character-Leases | erledigt |
+| [P1-001](../tasks/P1-001-movement.md) | Wege/Reisen | Graph, Routenvorschau, Fußreise/Ankunft | erledigt |
+| [P1-004](../tasks/P1-004-map-visual-upgrade.md) | Weltkarte 2.0 | Fullscreen-HUD, Rotation, Visualformat, Gebäude/Küste/Straßen | erledigt |
+| [P1-005](../tasks/P1-005-world-package-loader.md) | Kartenpakete | Breakwater und Cove ohne Neubuild nativ/WASM/Browser | erledigt |
+| [P1-006](../tasks/P1-006-osm-world-importer.md) | Geodatenimport | Offline-OSM, City-v3, Natural/Island; 1×1 und 5×5 km gemessen, dichter Ausschnitt am Byte-Limit | erledigt |
+| [P1-007](../tasks/P1-007-world-studio.md) | World Studio Karteneditor | Auswahl, Import, Vorschau, validierter Export und Spielstart | in Arbeit (Nutzerangabe) |
+| [P1-008](../tasks/P1-008-realtime-clock-motion.md) | Echtzeit und flüssige Bewegung | 1×-Uhr, Debug-Faktor, kontinuierliche Marker entlang Hostroute, native/WASM-Parität | als Nächstes geplant |
+| [P1-002](../tasks/P1-002-character-routines.md) | Bewohner und Tagespläne | Datengetriebene Residents, Home/Job/Routine, Arbeit/Heimkehr; erster passender Inspector | geplant |
+| [P1-003](../tasks/P1-003-npc-behavior.md) | NPC-Verhalten | Einfache Entscheidungen, Ambient-Population, Messung; gemeinsame Actions | geplant |
+| P2.1 | Erster spielbarer Auftrag | Ort/Item/Activity, Kuriermission, Einkommen, Speichern/Laden; erste Content-Editoren | geplant |
+| P2.2 | Spielbarer Alltag | Shop, Essen/Trinken/Schlaf/Hygiene, einfacher wiederkehrender Lieferjob, erstes Reiseevent mit Timeout-Fallback | geplant |
+| P3 | Besitz und Charakterentwicklung | Fahrzeuge/Fahrten, Immobilien, Jobs/Handel, Beziehungen, Attribute/Skills und passende Editoren | später |
+| P4 | Crime-RPG-Spielbreite | Abstrakte Konflikte, fiktiver illegaler Handel/Diebstahl, Rennen, Glücksspiel/Freizeit, Utility AI, Mission-/Event-/Dialoggraphen und Minispiele | später |
+| P5 | Öffentlicher Multiplayer | Auth, Rechte, Reconnect, Sicherheit, Hosting/Skalierung | zurückgestellt |
+| später | Erweiterungen | Modulare 3D-Charaktere/Kleidung, komplexe Wirtschaft; Aktienhandel weit nach dem Kernspiel | zurückgestellt |
 
-Die Ergebnisse stehen in den jeweiligen Tasks. P1-007 folgt auf den Offline-Importer und liegt vor P1-002 und P1-003. P2 ist der erste RPG-Loop, öffentlicher Multiplayer ist P5 vorbehalten. [P0-001](../tasks/P0-001-map-prototype.md) · [P0-002](../tasks/P0-002-dual-runtime.md) · [P1-001](../tasks/P1-001-movement.md) · [P1-004](../tasks/P1-004-map-visual-upgrade.md) · [P1-005](../tasks/P1-005-world-package-loader.md)
+Reihenfolge: P1-007 → P1-008 → P1-002 → P1-003 → P2.1 → P2.2. Task-IDs sind nicht chronologisch. P2.1 ist der erste echte RPG-Loop (Auftrag, Reise, Übergabe, Einkommen), P2.2 baut einen wiederholbaren Lebens-/Arbeitsloop. P2.1/P2.2 sind Planungsabschnitte, konkrete Task-Dateien erst vor Umsetzung spezifizieren. Kein vollständiges Charakter-/Wirtschaftssystem als Vorbedingung. P1-007 bleibt Karteneditor, keine Scope-Erweiterung.
 
-Langfristige Querschnittsanforderung: Jede neue Gameplay-Mechanik erhält ein dynamisch ladbares Format und später passenden Studio-Editor; kein hartcodierter Content. [Game Content](architecture/game-content.md) · [Studio-Content](design/world-studio-content.md). P1-005–007 bleiben Kartenloader, Importer und Kartengenerator; nachfolgende konkrete Aufgaben erst bei tatsächlicher Mechanik spezifizieren.
+[Gameplay-Featurekatalog](design/gameplay.md) · [Charaktermodell](design/characters.md) · [Weltsimulation](design/simulation.md) · [World-Studio-Roadmap](design/world-studio-content.md) · [Game Content](architecture/game-content.md). Jede Mechanik erhält ein versioniertes dynamisch ladbares Format, passende Clientprojektion und bei unterstütztem Format einen kleinen Studio-Editor; kein hartcodierter Content. Editor und Game wachsen in vertikalen Schnitten.

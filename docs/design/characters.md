@@ -26,3 +26,23 @@ Session fragt Liste verfügbarer Charaktere an, wählt einen, sendet AcquireChar
 
 ## Erste Abnahme
 Zwei Bewohner mit unterschiedlichen Daten; zwei Clients können getrennte Bewohner steuern, nicht denselben. Nach Freigabe bleibt Position/Geld/Besitz erhalten, Tagesplan läuft weiter. Eine Hintergrundfigur arbeitet bzw. reist zeitlich konsistent; Ambient-Passant bleibt einfach und nicht übernehmbar. Erweiterung von Beziehungen und Utility AI nach dem ersten RPG-Loop.
+
+## Charaktermodell (Gameplay-Erstentwurf, 27.11.2026)
+Grundwerte und Fähigkeiten zunächst 0–100 als Balancing-Entwurf, nicht als feste Engine-Limits. Attributdefinitionen und konkrete Startwerte im Content; neue Werte erst mit nutzender Mechanik. Attribute entwickeln sich langsam, Skills durch Anwendung; temporäre Bedürfnisse/Verletzungen beeinflussen effektive Werte, nicht notwendigerweise die Basiswerte.
+| Attribute | Beispielnutzung |
+|---|---|
+| Strength | Nahkampf, körperliche Arbeit |
+| Endurance | Ermüdung, Sport |
+| Speed | Bewegung/Flucht; konkrete Grundgeschwindigkeit und Limits separat |
+| Dexterity | Feinmotorik, Präzision |
+| Perception | Gefahrenerkennung, Autofahren, Angeln |
+| Focus | Aufmerksamkeit, Schussgenauigkeit |
+| Intelligence | Lernen, Problemlösung |
+| Charisma | Kommunikation, Verhandlung |
+
+Skills: Melee (Strength/Dexterity), Marksmanship (Focus/Dexterity), Driving (Perception/Dexterity), Cooking (Dexterity/Intelligence), Fishing (Perception/Focus), Trading (Intelligence/Charisma), Persuasion (Charisma/Intelligence), Mechanics (Dexterity/Intelligence), Stealth (Dexterity/Perception). Gambling nur bei kompetenzabhängigen Entscheidungen; bei reinem Zufall keine Skill-Manipulation der Gewinnchance. Gewichtung und Lernregeln datengetrieben, keine exakten Formeln beschlossen.
+
+Personality: Friendliness, Aggression, RiskTolerance, Discipline, Honesty (Entwurf 0–100). Eigenschaften bestimmen Präferenzen, nicht automatisch Erfolg. Beziehungen pro gerichteter Character-ID-Kante: Familiarity 0–100, Affinity −100 bis +100, Trust 0–100, optionale Relationstags (Freund, Familie, Kollege, Arbeitgeber, Geschäftspartner, Rivale). A→B kann von B→A abweichen; unbekannt von bekannter neutraler Beziehung unterscheiden. Gemeinsame Aktivitäten/Verhalten verändern Beziehungen; Vertrauen kann Angebote freischalten.
+Needs/Status: Health, Energy, Satiety, Hydration, Hygiene, Mood (Entwurf 0–100, hoch = gut). Verbrauch in Simulationszeit; Essen, Trinken, Schlaf, Duschen und Freizeit regenerieren passende Werte. Gesundheit als Zustand, nicht zwingend als zeitlich sinkendes Bedürfnis behandeln. Keine allumfassende Simulation im ersten Resident-Schnitt.
+Appearance: später modulare einfache 3D-Modelle, Haare, Gesicht, Körper und Kleidung aus Asset-Referenzen; visuell getrennt von Attribut-/Ausrüstungswirkungen.
+[Gameplay](gameplay.md) · [Simulation](simulation.md).

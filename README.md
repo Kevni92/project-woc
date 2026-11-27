@@ -68,7 +68,7 @@ Die Karte verbindet beim ersten Öffnen automatisch. Linkes Ziehen und die Pfeil
 
 Wähle Orte oder Charaktere über ihre Marker oder die einklappbaren Listen im Kartenmenü. Der Auswahlbereich folgt dem Marker auf großen Fenstern und erscheint am unteren Rand auf schmalen Fenstern. Ein Gebäudeklick zeigt Viertel und Höhe. Escape schließt die Auswahl oder die geöffnete Liste. Ohne WebGL 2 bleiben Listen und Reiseaktionen erreichbar.
 
-Wähle Ada oder Ben und klicke auf **Übernehmen**. Wähle anschließend einen Ort. Die Karte zeigt die Gehroute, Entfernung und Dauer in Spielminuten. **Zu Fuß gehen** startet die Reise. Ziel und verbleibende Zeit stehen in den Kartendetails. Eine Spielminute entspricht ungefähr einer realen Sekunde. Eine begonnene Reise läuft im Host auch bei Freigabe, Charakterwechsel oder Disconnect weiter.
+Wähle Ada oder Ben und klicke auf **Übernehmen**. Wähle anschließend einen Ort. Die Karte zeigt die Gehroute, Entfernung und Dauer in Spielminuten. **Zu Fuß gehen** startet die Reise. Ziel und verbleibende Zeit stehen in den Kartendetails. Im aktuellen Prototyp entspricht eine Spielminute ungefähr einer realen Sekunde; Umstellung auf Echtzeit 1× und flüssige Bewegung ist in [P1-008](tasks/P1-008-realtime-clock-motion.md) geplant. Eine begonnene Reise läuft im Host auch bei Freigabe, Charakterwechsel oder Disconnect weiter.
 
 **Debugger** öffnet `?view=debug` mit derselben Transportkonfiguration. Client A teilt seine Session mit der Stadtkarte. Bei direktem Debugger-Aufruf startet jede Session über **Verbinden**. Die Schaltfläche **Zu Fuß zu …** startet eine echte Reise. **Zur Stadtkarte** zeigt die laufende Route oder die Ankunft. **Snapshot anfordern** lädt die Projektion neu.
 
@@ -117,5 +117,6 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P1-005](tasks/P1-005-world-package-loader.md) | Paketloader für native Anwendung, WASM und Browser |
 | [P1-006](tasks/P1-006-osm-world-importer.md) | OSM-Importer |
 | [P1-007](tasks/P1-007-world-studio.md) | Visueller Karteneditor |
+| [P1-008](tasks/P1-008-realtime-clock-motion.md) | Geplant: Echtzeit, Debug-Zeitfaktor, flüssige Bewegung |
 
 Starte eine KI-Sitzung mit dem Repository-Link und der Anweisung, AGENTS.md zu lesen.

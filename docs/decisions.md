@@ -9,7 +9,7 @@
 | D005 | REVIDIERT | Svelte 5 + Vite, Vitest/Playwright, IndexedDB bleiben Entwürfe; mitt nicht als autoritativer Game-Bus |
 | D006 | REVIDIERT | TypeScript-Core ersetzt durch portablen C++-Core; Command/Event und ECS-inspirierter Zuschnitt bleiben Entwürfe |
 | D007 | ENTWURF | Kleine fiktive Stadt, handgebaute Testdaten, lokales metrisches Wegenetz |
-| D008 | ENTWURF | 24 reale Minuten pro Spieltag, pausierbar; kein Offline-Fortschritt |
+| D008 | REVIDIERT | 24 reale Minuten pro Spieltag durch Echtzeitvorgabe D032 ersetzt; kein Offline-Fortschritt bleibt separater Entwurf |
 | D009 | REVIDIERT | P0 um Dual-Runtime-Vertragsschnitt erweitert, P1 Simulation, P2 erster RPG-Loop |
 | D010 | REVIDIERT | Native Server-Testanwendung und logische Mehrclientfähigkeit früh; öffentlicher Multiplayer, große Welt und komplexe Wirtschaft zurückgestellt |
 | D011 | VORGABE | Gemeinsamer C++-Simulationskern für WASM im Browser und native Anwendung; Server via WebSocket |
@@ -34,15 +34,19 @@
 | D030 | IMPLEMENTIERT | P1-005, 2026-11-27. Hosts laden World Package v1 mit City v2 und geprüften SHA-256-Dateihashes. `World` besitzt die unveränderliche Definition. WASM bindet Ports und Uhr nach dem Init. Der Browser lädt Darstellungsdaten über HTTP und prüft `Welcome` v3 gegen Welt-ID, Schema, Revision und semantischen Hash. Die Selektoren sind `breakwater` und `cove`. |
 | D031 | IMPLEMENTIERT | Beschluss vom 27.11.2026. P1-006 liefert den reproduzierbaren Offline-Importer mit metrischer AOI, Natural/Island, City v3, Visual v2, konservativem Fußgraph, Test-Spawns, Provenance und OSM-Attribution. Paket v1 trägt beide Versionskombinationen. Das ursprüngliche 8-MiB-Limit je Welt- und Visualdatei gilt nach den Bremer Messläufen weiter. [Abnahme und Messungen](../tasks/P1-006-osm-world-importer.md) |
 
+| D032 | VORGABE | 27.11.2026: Echtzeit 1× als Standard, Simulationsgeschwindigkeit im Debug-Menü manuell verstellbar, Bewegung flüssig statt Sekundensprüngen. P1-008 geplant; alter Prototyp bis dahin unverändert. |
+| D033 | VORGABE | 27.11.2026: Lebens-/Crime-RPG-Sandbox mit Attributen, Skills, Persönlichkeit, Beziehungen, Bedürfnissen, Activities, Missionen, Jobs, Events, Wirtschaft, Fahrzeugen, Besitz, Konflikten und später Appearance; datengetriebene World-Studio-Editoren. Bei ausbleibender Spielerantwort Event automatisch anhand Charakterdaten entscheiden. |
+| D034 | ENTWURF | Erstes Gameplay-Modell und Wertebereiche in Charakter-/Gameplay-Konzept; P1-008 vor NPC-Routinen, P2.1 Kurier-Kernloop, P2.2 Alltag/Shop/Jobvorlage/Reiseevent; Engine und Studio in vertikalen Schnitten. Kein finales Balancing. Aktienhandel weit später. |
+
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?
 2. Kartenaufbau: von Hand erstellt, prozedural oder importierte Geodaten? Für P0 handgebauter Entwurf.
-3. Reisegefühl: kontinuierlich in beschleunigter Spielzeit, kurze reale Timer oder Zeitüberspringen?
+3. Reisegefühl: Echtzeitstandard entschieden (D032); konkrete Abbruch-/Umleitungsregeln, Wartekomfort, Debug-Stufen und Hintergrund-/Offline-Verhalten bleiben offen.
 4. Spielerrolle: freies kriminelles/legales Sandbox-RPG oder stärker geführte Karriere?
 5. Wie groß soll der endgültige Detailgrad bei NPC-Alltag, Wirtschaft und Beziehungen sein? Nach P2 iterieren.
 6. Öffentlicher Multiplayer: Authentifizierung, gemeinsame Stadt, Zugriffspolitik und Disconnect-Fristen; nicht vor P2 finalisieren.
 7. Charakterauswahl: alle geeigneten Residents frei wählbar oder account-/rollenbasierte Beschränkungen? Beobachtermodus?
-8. Soll ein vom Client gesteuerter Charakter auch ohne Eingabe automatisch Routinehandlungen durchführen? Welche Verpflichtungen sind zwingend?
+8. Event-Fallback bei ausbleibender Eingabe entschieden (D033); darüber hinaus automatische Routinehandlungen, Fristen, Verpflichtungen und Unterbrechungsregeln noch offen.
 9. Wann darf ein Ambient-Passant zu einem übernehmbaren Bewohner werden? Wie viele dauerhafte Residents pro Stadt? Erst nach Profiling festlegen.
 
 REVIDIERT bezeichnet ersetzte frühere Entwürfe; aktuelle Vorgaben D011–D013 haben Vorrang. Entscheidungen nicht stillschweigend als beschlossen markieren. Bei Zustimmung Datum, Kontext und Auswirkungen ergänzen. Revidierte Entscheidungen nachvollziehbar kennzeichnen.
