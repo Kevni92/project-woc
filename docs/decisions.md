@@ -6,12 +6,19 @@
 | D002 | VORGABE | TypeScript + Three.js, HTML/CSS, kein React/Angular |
 | D003 | VORGABE | Karte als Spielfeld, Nahsicht geometrisches 3D, Fernsicht 2D |
 | D004 | VORGABE | RPG, Orte, Inventar, Besitz, Reisen, Textmissionen, NPC-Alltag, 24h-Rhythmus |
-| D005 | ENTWURF | Svelte 5 + Vite, mitt, Vitest/Playwright, IndexedDB |
-| D006 | ENTWURF | Frameworkfreier Simulationskern, Command/Event-Muster, ECS-inspiriert |
+| D005 | REVIDIERT | Svelte 5 + Vite, Vitest/Playwright, IndexedDB bleiben Entwürfe; mitt nicht als autoritativer Game-Bus |
+| D006 | REVIDIERT | TypeScript-Core ersetzt durch portablen C++-Core; Command/Event und ECS-inspirierter Zuschnitt bleiben Entwürfe |
 | D007 | ENTWURF | Kleine fiktive Stadt, handgebaute Testdaten, lokales metrisches Wegenetz |
 | D008 | ENTWURF | 24 reale Minuten pro Spieltag, pausierbar; kein Offline-Fortschritt |
-| D009 | ENTWURF | P0 Karte, P1 Simulation, P2 erster RPG-Loop |
-| D010 | ZURÜCKGESTELLT | Multiplayer-Variante, Server, große Welt, komplexe Wirtschaft |
+| D009 | REVIDIERT | P0 um Dual-Runtime-Vertragsschnitt erweitert, P1 Simulation, P2 erster RPG-Loop |
+| D010 | REVIDIERT | Native Server-Testanwendung und logische Mehrclientfähigkeit früh; öffentlicher Multiplayer, große Welt und komplexe Wirtschaft zurückgestellt |
+| D011 | VORGABE | Gemeinsamer C++-Simulationskern für WASM im Browser und native Anwendung; Server via WebSocket |
+| D012 | VORGABE | Einheitliche flexible Client-Schnittstelle, mehrere logische Clients pro Simulation, steuerbare persistente Charaktere |
+| D013 | VORGABE | Unterschiedliche Simulationstiefen: übernehmbare Bewohner mit Alltag, Beziehungen, Besitz, Finanzen, Attributen vs. einfache Passanten |
+| D014 | ENTWURF | C++23, CMake, Emscripten, Boost.Asio/Beast, JSON, dedizierter Worker, native CLI und Server |
+| D015 | ENTWURF | Exklusive Character-Lease, maximal eine je Session, atomarer Wechsel und Autonomie bei Freigabe |
+| D016 | ENTWURF | Ambient/Resident/Featured; semantische Tiefe getrennt von zeitlicher Auflösung |
+| D017 | ENTWURF | Identischer asynchroner versionierter Nachrichtenvertrag, Snapshots/Deltas, semantische Paritätstests |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?
@@ -19,6 +26,9 @@
 3. Reisegefühl: kontinuierlich in beschleunigter Spielzeit, kurze reale Timer oder Zeitüberspringen?
 4. Spielerrolle: freies kriminelles/legales Sandbox-RPG oder stärker geführte Karriere?
 5. Wie groß soll der endgültige Detailgrad bei NPC-Alltag, Wirtschaft und Beziehungen sein? Nach P2 iterieren.
-6. Multiplayer: gemeinsame Stadt, asynchrone Wirtschaft oder getrennte Welten mit Begegnungen? Nicht vor P2 entscheiden.
+6. Öffentlicher Multiplayer: Authentifizierung, gemeinsame Stadt, Zugriffspolitik und Disconnect-Fristen; nicht vor P2 finalisieren.
+7. Charakterauswahl: alle geeigneten Residents frei wählbar oder account-/rollenbasierte Beschränkungen? Beobachtermodus?
+8. Soll ein vom Client gesteuerter Charakter auch ohne Eingabe automatisch Routinehandlungen durchführen? Welche Verpflichtungen sind zwingend?
+9. Wann darf ein Ambient-Passant zu einem übernehmbaren Bewohner werden? Wie viele dauerhafte Residents pro Stadt? Erst nach Profiling festlegen.
 
-Entscheidungen nicht stillschweigend als beschlossen markieren. Bei Zustimmung Datum, Kontext und Auswirkungen ergänzen. Revidierte Entscheidungen nachvollziehbar kennzeichnen.
+REVIDIERT bezeichnet ersetzte frühere Entwürfe; aktuelle Vorgaben D011–D013 haben Vorrang. Entscheidungen nicht stillschweigend als beschlossen markieren. Bei Zustimmung Datum, Kontext und Auswirkungen ergänzen. Revidierte Entscheidungen nachvollziehbar kennzeichnen.

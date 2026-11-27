@@ -2,7 +2,7 @@
 Status: ENTWURF
 
 ## Charakter
-Stabile Spieler-ID, Name, Geld (ganzzahlige kleinste Währungseinheit), Position, Inventar und Besitz. Kandidaten für Attribute: Stärke, Geschick, Intelligenz, Charisma; noch nicht balancieren. Erst Attribute hinzufügen, wenn eine Aktion sie tatsächlich benötigt.
+Jeder voll simulierte Charakter besitzt eine stabile Character-ID, Name, Geld (ganzzahlige kleinste Währungseinheit), Position, Inventar und Besitz. Client-ID, Account-ID und Character-ID sind getrennt. Spieler bezeichnet die Rolle eines Clients, nicht eine eigene Entitätsklasse. Siehe [Charaktere](characters.md). Kandidaten für Attribute: Stärke, Geschick, Intelligenz, Charisma; noch nicht balancieren. Erst Attribute hinzufügen, wenn eine Aktion sie tatsächlich benötigt.
 
 ## Inventar und Besitz
 ItemDefinition (Name, Kategorie, Stapelbarkeit, Preis) getrennt von ItemStack/ItemInstance (Menge oder individuelle ID). Fahrzeuge und Immobilien sind persistente Entitäten mit Owner-ID und Standort; nicht bloß ein Inventarstack. Kauf validiert Geld, Angebot und Verfügbarkeit, aktualisiert Besitz/Geld atomar und publiziert Ereignis. Inventarplätze, Gewicht, Miete, Verbrauch zunächst nicht notwendig.

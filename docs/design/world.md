@@ -11,8 +11,8 @@ Land/Wasserflächen, Straßen und Gebäude werden aus selbst erstellten Daten ge
 - Road graph: Knoten, Kanten, Länge, erlaubte Reisearten.
 - Building: Grundriss, Höhe, District-ID.
 - Location: ID, Gebäude-ID optional, Zugangspunkt am Wegenetz, Typ, Öffnungszeiten, Aktionen. Mehrere Orte je Gebäude möglich.
-- Entity: stabile ID, Position auf dem Graphen oder am Ort, Referenz auf eigene Zustandsdaten.
-Koordinaten in lokalen Metern (x/z, y = Höhe in Three.js); Spiellogik kennt keine Three.js-Vektoren. Geometrie und Wegegraph teilen dasselbe Koordinatensystem; der Renderer interpretiert nur Daten.
+- Entity: stabile ID, Position auf dem Graphen oder am Ort, Referenz auf eigene Zustandsdaten. Übernehmbare Charaktere sind persistente Bewohner; Passanten können vereinfachte Entitäten sein. Spieler-Marker bezeichnet den aktuell vom jeweiligen Client kontrollierten Charakter.
+Koordinaten in lokalen Metern (x/z, y = Höhe in Three.js); C++-Simulation kennt keine Three.js-Vektoren. Geometrie und Wegegraph teilen dasselbe Koordinatensystem; der Renderer interpretiert nur Daten.
 
 ## Ansichten
 | Zoom | Darstellung |

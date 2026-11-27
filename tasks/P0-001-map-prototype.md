@@ -11,10 +11,10 @@ Ein lokaler Browser-Prototyp, der das zentrale Spielgefühl überprüft: eine mi
 - Orthografische Kamera: Pan, Zoom, geneigte Nahsicht mit Gebäudeextrusion und flache Top-down-Fernsicht ohne Extrusion. Eine Weltkoordinate bleibt beim Übergang erhalten.
 - Klick auf POI/Gebäude/Marker zeigt korrekte Details in HTML-Panel, Hintergrundklick hebt Auswahl auf. Marker nach Typ visuell unterscheidbar.
 - Einfache CSS-Tokens und UI mit Kartenfläche, Ortsdetails, Zoom-/Reset-Steuerung. Optional manuelle Tag-/Nachtpalette zum visuellen Test, keine Uhrsimulation.
-- Kleines typsicheres Modell für World/Location/Entity; unabhängige Daten und Rendering; kein umfassender GameCore nötig.
+- Kleines typsicheres Snapshot-/ViewModel für World/Location/Entity; unabhängige Daten und Rendering. Asynchroner MockTransport liefert Testdaten über SimulationClient gemäß [Protokoll](../docs/architecture/protocol.md); keine autoritativen Spielregeln in TS. Echter C++-Core folgt in P0-002.
 
 ## Nicht im Umfang
-Keine echte Bewegung, kein NPC-Tagesplan, keine Missionen, kein Inventar, keine Persistenz, keine Accounts, kein Karteneditor, keine externen Kartendaten.
+Keine echte Bewegung, kein NPC-Tagesplan, keine Missionen, kein Inventar, keine Persistenz, keine Accounts, kein realer WASM-/WebSocket-Host (P0-002), kein Karteneditor, keine externen Kartendaten.
 
 ## Akzeptanzkriterien
 - [ ] Lokaler Start mit dokumentiertem Befehl; Build und Typecheck erfolgreich.

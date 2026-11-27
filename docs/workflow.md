@@ -11,7 +11,7 @@ Datei tasks/<ID>-<slug>.md: ID, Status (geplant / bereit / in Arbeit / blockiert
 ## Umsetzung
 1. AGENTS.md und relevante Konzepte/Task lesen; Ist-Zustand prüfen.
 2. Nur angeforderten Task umsetzen; bei Konzeptauftrag keinen Produktionscode.
-3. Automatisierte Tests für Spiellogik sowie Build/Typprüfung; Browser-Smoketest bei UI.
+3. Automatisierte C++-Tests für Spiellogik, native und WASM-Builds bei Core-/Protokolländerungen, gemeinsame Vertragsfixtures und semantische Parität; TS-Build/Typprüfung und Browser-Smoketest bei UI. Keine zweite Spiellogik im Client. Testtransport darf nur Fixtures liefern.
 4. Akzeptanzkriterien überprüfen, reale Ergebnisse und Abweichungen im Task notieren.
 5. Roadmap aktualisieren; Änderungen in nachvollziehbarem Commit dokumentieren. Bei bereits bestehender Arbeit keine destruktiven Git-Befehle.
 Keine ungetesteten Behauptungen, keine erfundenen Ergebnisse. Nicht ungefragt eine neue Projektphase starten.
