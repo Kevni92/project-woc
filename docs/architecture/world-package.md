@@ -34,3 +34,7 @@ Der Simulationszustand gehört zum laufenden Host. Ein Weltwechsel erfolgt durch
 City v2 verwendet ein metrisches Millimeterraster und Koordinaten innerhalb von ±10 km je Achse. Land und Gebäude verwenden einfache Ringe. Der beidseitige Fußgraph verlangt eindeutige Knotenpositionen, eindeutige Ortszugänge und eine zusammenhängende Komponente. Die drei Prototyp-Spawn-IDs und der Ambient-Patrol gehören zum heutigen City-Vertrag. Eine Traversierung prüft die Konnektivität in O(V+E).
 
 P1-006 und P1-007 können Pakete über denselben Loader prüfen. Für größere Exporte bleiben räumliche Indizes zur Geometrieprüfung, Chunking und ein ZIP-Transport spätere Erweiterungen. [Kartenformat](map-format.md) · [World Studio](../design/world-studio.md)
+
+## Beschlossener Zielvertrag für P1-006 (noch nicht implementiert)
+
+City v3 und Visual v2 sollen AOI, Natural/Island und komplexe Polygongeometrien unterstützen. Paket v1 bleibt als Hülle erhalten; das aktuelle Schema beschränkt `worldSchemaVersion` und Dateideskriptoren auf die bisherigen Versionen, daher müssen Schema und Versionsdispatch ausdrücklich um die neuen, kompatiblen Kombinationen ergänzt werden. City v2/Visual v1 bleiben gültig; alte Loader dürfen neue Pakete kontrolliert ablehnen. Theme v1 und Welcome v3 bleiben erhalten. Die bestehenden Hash-, Pfad-, Größen- und Lebensdauerprüfungen gelten weiter. Größenlimits werden anhand des 1 × 1-km-Imports und 5 × 5-km-Messlaufs geprüft; Anpassungen nur explizit und mit Grenztests. Details und Abnahme: [P1-006](../../tasks/P1-006-osm-world-importer.md).

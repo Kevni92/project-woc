@@ -8,7 +8,7 @@ Status. P0-001, P0-002, P1-001, P1-004 und P1-005 sind implementiert und geteste
 | [P1-001](../tasks/P1-001-movement.md) | Wege und Reisen | Autoritativer Graph, Routenvorschau, Fußreise und Ankunft über beide Transporte | erledigt |
 | [P1-004](../tasks/P1-004-map-visual-upgrade.md) | Weltkarte 2.0 | Fullscreen-HUD, 360°-Kamera, getrenntes Visual-Format, Gebäude/Küste/Straßen | erledigt |
 | [P1-005](../tasks/P1-005-world-package-loader.md) | Kartenpakete | Breakwater und Cove werden nativ, im WASM-Host und im Browser aus validierten Paketen zur Laufzeit geladen | erledigt |
-| [P1-006](../tasks/P1-006-osm-world-importer.md) | Geodatenimport | OSM → spielbares Paket, exakte AOI und Inselmodus | geplant |
+| [P1-006](../tasks/P1-006-osm-world-importer.md) | Geodatenimport | Offline-OSM → spielbares City-v3-Paket, exakte AOI, Natural/Island, 1 × 1-km-Import und 5 × 5-km-Messlauf | spezifiziert; Umsetzung ausstehend |
 | [P1-007](../tasks/P1-007-world-studio.md) | World Studio | Lokaler Karteneditor mit Rechteck/Freihand und Export | geplant |
 | [P1-002](../tasks/P1-002-character-routines.md) | Bewohner und Tagespläne | Datengetriebene Resident-Definitionen/Startinstanzen, Scheduler, Arbeit und Heimkehr | geplant |
 | [P1-003](../tasks/P1-003-npc-behavior.md) | NPC-Verhalten | Einfache Entscheidungen, Ambient-Population, Messungen | geplant |
