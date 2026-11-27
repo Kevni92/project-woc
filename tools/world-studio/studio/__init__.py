@@ -1,0 +1,1 @@
+"""Local World Studio application."""

@@ -7,3 +7,7 @@
 /client/src/generated/*.mjs
 /client/src/generated/*.wasm
 /tools/world-studio/**/__pycache__/
+/tools/world-studio/node_modules/
+/tools/world-studio/dist/
+/tools/world-studio/test-results/
+/tools/world-studio/playwright-report/

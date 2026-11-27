@@ -1,0 +1,12 @@
+:root { font: 15px system-ui, sans-serif; color: #192c32; background: #eef2ef; }
+* { box-sizing: border-box; }
+body { margin: 0; } header { background: #163d43; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+header h1, header p { margin: 2px 0; } header a { color: #c4e9de; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; padding: 16px; }
+section, aside { background: white; border: 1px solid #d2ded9; border-radius: 8px; padding: 16px; min-width: 0; }
+h2 { font-size: 1.2rem; } aside label, details label { display: block; margin: 9px 0; } input, select, button { font: inherit; padding: 6px 8px; border: 1px solid #9bada8; border-radius: 4px; }
+aside input, aside select, details input { width: 100%; } button { cursor: pointer; background: #edf5f1; } button:hover, button.active { background: #b9ded0; } button:disabled { opacity: .5; cursor: default; }
+.toolbar, .layers { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; margin: 10px 0; } .toolbar label { display: flex; flex-direction: column; } .toolbar input[type=number] { width: 110px; }
+.geo-map { height: 440px; width: 100%; border: 1px solid #aabbb4; } .game-preview { height: 490px; background: #dde5e0; } .game-preview canvas { width: 100%; height: 100%; touch-action: none; }
+.map-preview { display: block; max-width: 100%; height: auto; border: 1px solid #aabbb4; } .notice { margin: 8px 16px; } .error { color: #a22a28; } pre { overflow: auto; max-height: 400px; background: #f0f3f2; padding: 10px; } code { overflow-wrap: anywhere; }
+@media (max-width: 850px) { main { grid-template-columns: 1fr; } header { align-items: start; flex-direction: column; } }
