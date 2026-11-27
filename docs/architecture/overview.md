@@ -23,7 +23,7 @@ Die Ninja-Presets `native` und `wasm` verwenden getrennte Build-Verzeichnisse. `
 | `simulation/hosts/native/`, `simulation/hosts/wasm/` | CLI-Frames, Loopback-WebSocket, Takt beziehungsweise C-ABI |
 | `protocol/` | Sprachneutrale JSON-Schemas und gemeinsame Vertragsfixture |
 | `client/src/simulation/` | Transportadapter, Worker, SimulationClient und Projektion |
-| `content/` | Semantische Welt v2 mit Wegenetz, Visual-Sidecar v1 und Theme v1 samt JSON-Schemas |
+| `content/` | City v2/v3 mit Wegenetz, Visual v1/v2 und Theme v1 samt JSON-Schemas |
 | `client/src/render/` | Kartenvalidierung, Three.js-Geografie, Kamera, Palette und Projektion auf den Bildschirm |
 | `client/src/ui/` | Stadtkarte mit HTML-Markern und Details sowie zwei Debug-Panels auf demselben Simulationshost |
 | `tests/`, `client/tests/` | Native Tests, Client-/Kartentests, Vertragsparität und Browser-Smoke |
@@ -50,8 +50,9 @@ Manifest und Karten-JSON liegen in laufzeitladbaren Paketen. Der gemeinsame C++-
 
 `MapView` nimmt Befehle entgegen und zeigt Steuerrechte, Reisezustand und privates Bargeld aus der autoritativen Projektion. Marker, Führungslinien und Kontextfenster teilen sich die Projektion in CSS-Pixeln. Bei einer Resynchronisierung blendet die Karte Live-Marker und Route bis zum Snapshot aus und lädt bei Bedarf eine frische Vorschau. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu. [Kartenformat](map-format.md) · [Kartenstil](../design/map-visuals.md)
 
-## Geplanter Weltimport
-P1-006 soll aus OSM-Daten World Packages erstellen. P1-007 stellt dafür ein separates lokales Entwicklerwerkzeug bereit. [World Studio](../design/world-studio.md)
+## Offline-Weltimport
+
+P1-006 erzeugt validierte City-v3-Pakete über eine lokale Python-Pipeline. Sie exportiert metrische Geometrie und den Fußgraphen. Der gemeinsame Simulationskern berechnet darauf Routenvorschau, Reise und Ankunft. P1-007 bindet die Importfunktion in den geplanten Karteneditor ein. [World Studio](../design/world-studio.md)
 
 ## Langfristige Content-Engine
 C++ interpretiert dynamisch geladene, versionierte Definitionen und Startinstanzen; World Studio wird später modularer Content-Editor. Generische typisierte Mechanikhandler und deklarative Bedingungen/Effekte statt hartcodierter Spielinhalte. Siehe [Game Content](game-content.md). Kartenloader/Importer/Studio bleiben zunächst im bisherigen Umfang, keine vollständige Regel-Engine vorziehen.

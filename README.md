@@ -2,7 +2,7 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand.** Breakwater und die kleinere Testwelt Cove sind als laufzeitladbare Kartenpakete verfügbar. Die bildschirmfüllende Karte lässt sich drehen und frei zoomen. Übernommene Bewohner können zu Orten der gewählten Welt laufen. Karte und Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
+**Stand.** Breakwater und Cove sind als laufzeitladbare Kartenpakete verfügbar. Der lokale OSM-Importer erzeugt City-v3-Pakete aus einem PBF, Landpolygonen und einer frei geformten Auswahl. Karte und Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host. [Import und Messungen](tasks/P1-006-osm-world-importer.md)
 
 ## Lokal bauen und starten
 
@@ -45,6 +45,22 @@ npm --prefix client run dev -- --host 127.0.0.1 --port 5173 --strictPort
 Breakwater ist der Standard. Öffne für Cove im WASM-Modus [127.0.0.1:5173/?world=cove](http://127.0.0.1:5173/?world=cove). Im WebSocket-Modus starte den Server mit `--world content/public/worlds/cove` und öffne [127.0.0.1:5173/?world=cove&transport=ws](http://127.0.0.1:5173/?world=cove&transport=ws). Die CLI akzeptiert dieselbe Option.
 
 Die integrierten Paketdateien liegen unter `content/public/worlds/`. Vite stellt sie im Dev-Modus direkt bereit und kopiert sie beim Build als statische Dateien nach `client/dist/worlds/`. Zusätzliche Pakete lassen sich in der bereitgestellten Basis ergänzen oder über `?world=<ordner>&worldBase=/karten/` von einer anderen statischen Basis laden. Ein Weltwechsel benötigt einen neuen Seitenaufruf und im nativen Modus einen neuen Hoststart. [Paketformat](docs/architecture/world-package.md)
+
+### OSM-Welt offline importieren
+
+Nach den nativen und WASM-Builds und `npm --prefix client ci` diese Befehle in PowerShell aus der Repository-Wurzel ausführen. Die synthetische Quelle und beide Weltpakete entstehen unter `build/`.
+
+```powershell
+python -m venv build/osm-venv
+build/osm-venv/Scripts/python.exe -m pip install --only-binary=:all: -r tools/world-studio/requirements.txt
+$env:PYTHONPATH = 'tools/world-studio'
+build/osm-venv/Scripts/python.exe tools/world-studio/tests/fixture.py build/osm-input/fixture --worlds build/osm-worlds
+build/osm-venv/Scripts/python.exe -m unittest discover -s tools/world-studio/tests -v
+$env:WOC_OSM_WORLDS = 'build/osm-worlds'
+npm.cmd --prefix client run test:e2e -- --workers=1
+```
+
+Der Importer prüft das Paket vor dem Export mit denselben Loadern wie CLI, Browser und WASM. Die Testwelt lädt im nativen Host mit `--world build/osm-worlds/osm-fixture`. Für eigene PBF- und Landquellen, Browserstart und Bremer Messläufe siehe die [Importanleitung](tools/world-studio/README.md).
 
 ### Karte bedienen
 
@@ -95,7 +111,7 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 | [World Package](docs/architecture/world-package.md) | Laufzeitladbare Kartenpakete |
-| [World Studio](docs/design/world-studio.md) | Lokaler Geodateneditor und Import (geplant) |
+| [World Studio](docs/design/world-studio.md) | Offline-Importer und geplanter lokaler Geodateneditor |
 | [Studio-Content](docs/design/world-studio-content.md) | Langfristige modulare Gameplay-Editoren |
 | [Game Content](docs/architecture/game-content.md) | Datengetriebene Definitionen, Initialzustand und Regelinterpreter |
 | [P1-005](tasks/P1-005-world-package-loader.md) | Paketloader für native Anwendung, WASM und Browser |

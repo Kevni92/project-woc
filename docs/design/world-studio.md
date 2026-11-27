@@ -1,5 +1,5 @@
 # WOC World Studio — lokales Entwicklerwerkzeug
-Status: VORGABE für separate Entwickleranwendung, Google-Maps-artige Auswahl mit Rechteck und freiem Zeichnen, Export realer Gebäude/Geografie und Ozean außerhalb optional. Technik, Defaults und genaue GIS-Regeln ENTWURF.
+Status. Der Offline-CLI-Importer ist mit P1-006 implementiert. Die separate Entwickleranwendung mit Rechteck- und Freihandauswahl ist für P1-007 vorgesehen.
 Siehe [World Package](../architecture/world-package.md), [Kartenformat](../architecture/map-format.md).
 
 ## Anwendung
@@ -44,4 +44,4 @@ World Studio wächst vom Kartengenerator zur vollständigen lokalen Content-Auth
 
 ## Verbindlicher erster Umsetzungsschnitt (27.11.2026)
 
-[P1-006](../../tasks/P1-006-osm-world-importer.md) konkretisiert den Python-CLI-Importer mit lokalem PBF und Landquelle, Natural/Island, City v3/Visual v2, deterministischen Paketen, konservativem Fußgraph und sichtbarer Attribution. Kein Downloadadapter oder Studio-UI im ersten Schnitt; P1-007 bindet die wiederverwendbare Pipeline ein. Die kleinen synthetischen Fixtures sind verpflichtend, anschließend realer 1 × 1-km-Import und 5 × 5-km-Messlauf. Die übrigen UX-/Provider-/Backend-Details bleiben Entwürfe für P1-007.
+`woc_osm.import_world` verarbeitet lokales PBF und WGS84-Landpolygone zu validierten City-v3-/Visual-v2-Paketen in Natural oder Island. Die Schnittstelle liefert Fortschrittsphasen und einen strukturierten Qualitätsbericht. Der Browser zeigt für diese Pakete den OpenStreetMap-Hinweis. P1-007 bindet dieselbe Importfunktion ein. [Importanleitung](../../tools/world-studio/README.md) · [P1-006 und Messungen](../../tasks/P1-006-osm-world-importer.md)

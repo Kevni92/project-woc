@@ -1,6 +1,6 @@
 # World Package — laufzeitladbare Karten
 
-Status. Paketformat v1 und die Loader für native Anwendung, Browser und WebAssembly sind in P1-005 IMPLEMENTIERT. [Task P1-005](../../tasks/P1-005-world-package-loader.md)
+Status. Die Laufzeitloader aus P1-005 unterstützen mit P1-006 City v2/Visual v1 und City v3/Visual v2 in derselben Paket-v1-Hülle. [P1-005](../../tasks/P1-005-world-package-loader.md) · [P1-006](../../tasks/P1-006-osm-world-importer.md)
 
 ## Verzeichnis und Identität
 
@@ -9,8 +9,8 @@ Ein Paket ist ein zusammengehöriger Verzeichnisstand mit UTF-8-JSON. Die Verzei
 | Datei | Vertrag |
 |---|---|
 | `manifest.json` | [World Package v1](../../content/world-package-v1.schema.json) |
-| `world.json` | [City v2](../../content/city-v2.schema.json) mit Geografie, Wegenetz, Ortszugängen, Spawns und Patrol |
-| `visual.json` | [Visual v1](../../content/city-visual-v1.schema.json) mit Referenzen auf die Welt und optischen Ergänzungen |
+| `world.json` | [City v2](../../content/city-v2.schema.json) oder [City v3](../../content/city-v3.schema.json) mit Geografie, Fußgraph, Ortszugängen, Spawns und Patrol |
+| `visual.json` | [Visual v1](../../content/city-visual-v1.schema.json) zu City v2 oder [Visual v2](../../content/city-visual-v2.schema.json) zu City v3 |
 | `theme.json` | [Theme v1](../../content/map-theme-v1.schema.json) mit Farben und Darstellungsregeln |
 | `provenance.json` | [Provenance v1](../../content/world-provenance-v1.schema.json) mit Erstellungsmethode und Quellenangaben |
 
@@ -29,12 +29,10 @@ Das Manifest nennt für jede Datei die genaue Länge und den SHA-256 der UTF-8-B
 
 Der Simulationszustand gehört zum laufenden Host. Ein Weltwechsel erfolgt durch einen neuen Hoststart beziehungsweise einen neuen Seitenaufruf. `World` besitzt die unveränderliche `WorldDefinition` als Wert. Dadurch bleiben Orts-IDs, auf die Reisen und Projektionen per `string_view` verweisen, während der gesamten Hostlaufzeit gültig. CMake bettet nur Validierungsschemas ein. Die Weltdateien bleiben außerhalb der Binaries und des JavaScript-Bundles.
 
-## City v2 und weitere Entwicklung
+## Versionen und Geometrievalidierung
 
-City v2 verwendet ein metrisches Millimeterraster und Koordinaten innerhalb von ±10 km je Achse. Land und Gebäude verwenden einfache Ringe. Der beidseitige Fußgraph verlangt eindeutige Knotenpositionen, eindeutige Ortszugänge und eine zusammenhängende Komponente. Die drei Prototyp-Spawn-IDs und der Ambient-Patrol gehören zum heutigen City-Vertrag. Eine Traversierung prüft die Konnektivität in O(V+E).
+Beide City-Versionen verwenden ein metrisches Millimeterraster und Koordinaten innerhalb von ±10 km je Achse. Der beidseitige Fußgraph verlangt eindeutige Knotenpositionen, eindeutige Ortszugänge und eine zusammenhängende Komponente. Die drei Prototyp-Spawn-IDs und der Ambient-Patrol gehören zum City-Vertrag. Eine Traversierung prüft die Konnektivität in O(V+E).
 
-P1-006 und P1-007 können Pakete über denselben Loader prüfen. Für größere Exporte bleiben räumliche Indizes zur Geometrieprüfung, Chunking und ein ZIP-Transport spätere Erweiterungen. [Kartenformat](map-format.md) · [World Studio](../design/world-studio.md)
+City-v3-Manifeste tragen explizite `schemaVersion`-Werte in den vier Dateideskriptoren. Die Zuordnung ist Welt 3, Visual 2, Theme 1 und Provenance 1. Bei bestehenden City-v2-Manifesten leiten die Loader fehlende Angaben als 2, 1, 1 und 1 ab. Versionskonflikte werden vor dem Laden abgelehnt. Theme v1, Welcome v3, Pfad- und Hashprüfungen sowie die Byte-Limits gelten für beide Kombinationen.
 
-## Beschlossener Zielvertrag für P1-006 (noch nicht implementiert)
-
-City v3 und Visual v2 sollen AOI, Natural/Island und komplexe Polygongeometrien unterstützen. Paket v1 bleibt als Hülle erhalten; das aktuelle Schema beschränkt `worldSchemaVersion` und Dateideskriptoren auf die bisherigen Versionen, daher müssen Schema und Versionsdispatch ausdrücklich um die neuen, kompatiblen Kombinationen ergänzt werden. City v2/Visual v1 bleiben gültig; alte Loader dürfen neue Pakete kontrolliert ablehnen. Theme v1 und Welcome v3 bleiben erhalten. Die bestehenden Hash-, Pfad-, Größen- und Lebensdauerprüfungen gelten weiter. Größenlimits werden anhand des 1 × 1-km-Imports und 5 × 5-km-Messlaufs geprüft; Anpassungen nur explizit und mit Grenztests. Details und Abnahme: [P1-006](../../tasks/P1-006-osm-world-importer.md).
+City v3 verwendet Bounding-Volume-Bäume für Ringsegmente und Flächen. Der gemeinsame C++-Loader validiert die semantische Geometrie und prüft Fußkanten gegen Land, Löcher und Gebäude. Native Hosts und TypeScript prüfen zusätzlich Straßenflächen, Oberflächen und Küstengrenzen aus Visual v2. Der Worker initialisiert den C++-Host mit den verifizierten semantischen Bytes. Der Browser wartet bis zu 30 Sekunden auf die Betriebsbereitschaft des Workers, damit große gültige Pakete ihre Geometrie prüfen können. Die Frist für Protokollantworten beträgt fünf Sekunden. Beim Import werden die Python-Schemas und die tatsächlichen nativen, TS- und WASM-Loader im temporären Exportverzeichnis ausgeführt. [Kartenformat](map-format.md) · [Importanleitung](../../tools/world-studio/README.md)
