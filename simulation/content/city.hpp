@@ -8,5 +8,6 @@ namespace woc::content {
 [[nodiscard]] WorldDefinition load_city(std::string_view json);
 [[nodiscard]] nlohmann::json validate_city_json(std::string_view source);
 [[nodiscard]] WorldDefinition parse_city(const nlohmann::json& city);
+void validate_visual_v2(const nlohmann::json& city, const nlohmann::json& visual);
 
 }

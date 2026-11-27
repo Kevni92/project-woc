@@ -1,5 +1,5 @@
 # Kartenformat und Renderarchitektur
-Status. Die drei Datenbereiche und ihre JSON-Verträge sind IMPLEMENTIERT. Semantische Welt v2, Visualformat v1 und Themeformat v1 werden unabhängig versioniert.
+Status. Die drei Datenbereiche und ihre JSON-Verträge sind implementiert. City v2/Visual v1 und City v3/Visual v2 teilen sich Theme v1.
 
 ## Drei Datenbereiche
 
@@ -7,6 +7,8 @@ Status. Die drei Datenbereiche und ihre JSON-Verträge sind IMPLEMENTIERT. Seman
 |---|---|---|
 | [Welt v2](../../content/city-v2.schema.json) | [Breakwater](../../content/public/worlds/breakwater/world.json) mit Bounds, Land, Vierteln, Straßenachsen und Breiten, Gebäudegrundrissen und Gesamthöhen, Orten und Zugängen, Graph und Spawns | C++-Hosts und Client |
 | [Visualformat v1](../../content/city-visual-v1.schema.json) | [Breakwater-Sidecar](../../content/public/worlds/breakwater/visual.json) mit Referenzen auf Gebäude und Straßen sowie eigenen Flächen, Küstenlinien und Stegen | Client-Renderer |
+| [City v3](../../content/city-v3.schema.json) | AOI, Randmodus, komplexe Polygone und autoritativer Fußgraph | C++-Hosts und Client |
+| [Visual v2](../../content/city-visual-v2.schema.json) | Gekappte Straßenflächen, komplexe Flächen mit Löchern und typisierte Küstengrenzen | Client-Renderer |
 | [Themeformat v1](../../content/map-theme-v1.schema.json) | [Coastal](../../content/public/worlds/breakwater/theme.json) mit Tag-/Nachtfarbrollen, LOD-Schwellen, Abständen und Profilregeln | Client-Renderer, für mehrere Karten verwendbar |
 
 Native und WASM laden die semantische Geografie zur Laufzeit und bauen daraus die `WorldDefinition`. Die 61 Wegknoten, 78 Kanten und sechs Ortszugänge in Breakwater sind die Basis der Fußreisen. Protokoll v3 prüft die Identität der Welt anhand von ID, Revision und semantischem SHA-256. [World Package](world-package.md)
@@ -47,6 +49,8 @@ Straßen, Flächen und Gebäude verwenden gemeinsame Materialien und Geometriegr
 - OpenStreetMap Simple 3D Buildings: https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings — Footprint, Höhe, Geschosse, Dachformen als abstrakte Daten; Inspiration für eigenes lokales Schema, kein OSM-Import.
 - Three.js: https://threejs.org/docs/pages/OrbitControls.html, https://threejs.org/docs/pages/InstancedMesh.html, https://threejs.org/docs/ — vorhandene orthografische Kamera und Geometrien bleiben geeignet; OrbitControls als Referenz, vorhandene MapCamera gezielt erweitern.
 
-## Beschlossener Zielvertrag für GIS-Exporte (P1-006, noch nicht implementiert)
+## GIS-Exportvertrag für City v3 und Visual v2
 
-City v3 ergänzt die tatsächliche AOI und den Randmodus (Natural/Island); WorldBounds bleibt deren rechteckige Bounding Box mit Padding. Polygongeometrien unterstützen Außen- und Innenringe sowie Multipolygone. Visual v2 übernimmt entsprechende Flächen und unterscheidet physische Land-Wasser-Küsten von kartografischen Abschlüssen. Renderer trianguliert Innenlöcher korrekt, Natural hat einen neutralen nicht spielbaren Außenbereich, Island außerhalb der AOI Ozean und standardmäßig 500 m Padding. Keine still gefüllten Löcher oder Wege außerhalb der AOI. Theme v1 bleibt verwendbar. Die oben beschriebenen Regeln gelten unverändert für City v2/Visual v1; neue Feldnamen und konkrete Schemas werden in P1-006 spezifiziert und dokumentiert. C++/WASM-/TS-Validatoren prüfen die neuen Geometrien konsistent; räumliche Indizes für größere Exporte. Der Fußgraph bleibt zusammenhängend; nur die gewählte Hauptkomponente ist routbar. [P1-006](../../tasks/P1-006-osm-world-importer.md).
+City `version: 3` ergänzt `aoi` und `boundaryMode: "natural" | "island"`. `bounds` umschließt die AOI als Rechteck mit optionalem Padding. `aoi`, `land`, `districts[].outline`, `buildings[].footprint` und jeder Eintrag in `greens` verwenden `{ "polygons": [{ "outer": Ring, "holes": [Ring, …] }, …] }`. Ein Ring enthält offene `[x,z]`-Punktfolgen auf dem Millimeterraster. `aoi` hat genau ein Polygon. Die Polygoninnenflächen dürfen sich innerhalb einer Mehrfachfläche nicht überlappen. `waterLabel` ist bei fehlender Beschriftung optional.
+
+Visual `visualVersion: 2` verlangt City `worldVersion: 3`. `surfaces[].polygon` verwendet dieselbe Flächenform. `roads[].polygon` enthält die an der AOI gekappte Straßenfläche. Jede semantische Straßenachse hat genau eine solche Fläche. `coasts[].kind` unterscheidet `shore` (Land-Wasser-Grenze in der AOI), `island` (synthetische physische Küste am AOI-Rand) und `cut` (kartografischer AOI-Abschluss in Natural). Nur physische Küsten beeinflussen die Farbrampe. Natural begrenzt die Wasserfläche auf die AOI. Island zeichnet Ozean bis über den Kartenausschnitt, mit standardmäßig 500 m Padding. Visual v2 verwendet eine leere `decorations`-Liste. Theme v1 und die Kombination City v2/Visual v1 bleiben gültig. [P1-006](../../tasks/P1-006-osm-world-importer.md)

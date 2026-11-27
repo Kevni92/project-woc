@@ -1,7 +1,9 @@
 import Ajv from 'ajv';
 import visualSchema from '../../../content/city-visual-v1.schema.json';
+import visualSchemaV2 from '../../../content/city-visual-v2.schema.json';
 import themeSchema from '../../../content/map-theme-v1.schema.json';
-import type { City, Point } from './city-data';
+import type { City, CityV3, Point } from './city-data';
+import { AreaBoundary, onMillimeterGrid, SpatialIndex, validateArea, type Area } from './area-geometry';
 import {
   containsRing, distanceSquaredBetween, inBounds, intersects, isSimpleRing, onSegment,
   ringEdges, ringsTouch, ringSide, segmentSamples, segments, type Segment,
@@ -28,7 +30,7 @@ export interface RoadAppearance {
 
 export type SurfaceKind = 'parcel' | 'grass' | 'plaza' | 'promenade' | 'beach';
 
-export interface MapVisuals {
+interface VisualV1 {
   readonly visualVersion: 1;
   readonly worldId: string;
   readonly worldVersion: number;
@@ -39,6 +41,16 @@ export interface MapVisuals {
   readonly coasts: readonly { id: string; path: readonly Point[] }[];
   readonly decorations: readonly { id: string; kind: 'pier'; polygon: readonly Point[]; elevationM: number }[];
 }
+
+export interface VisualV2 extends Omit<VisualV1, 'visualVersion' | 'worldVersion' | 'roads' | 'surfaces' | 'coasts'> {
+  readonly visualVersion: 2;
+  readonly worldVersion: 3;
+  readonly roads: readonly (RoadAppearance & { readonly polygon: Area })[];
+  readonly surfaces: readonly { id: string; kind: SurfaceKind; polygon: Area }[];
+  readonly coasts: readonly { id: string; kind: 'shore' | 'island' | 'cut'; path: readonly Point[] }[];
+}
+
+export type MapVisuals = VisualV1 | VisualV2;
 
 export type ColorRole = keyof typeof themeSchema.definitions.palette.properties;
 export interface MapLod {
@@ -74,7 +86,8 @@ export interface MapTheme {
 }
 
 const ajv = new Ajv();
-const matchesVisual = ajv.compile<MapVisuals>(visualSchema);
+const matchesVisual = ajv.compile<VisualV1>(visualSchema);
+const matchesVisualV2 = ajv.compile<VisualV2>(visualSchemaV2);
 const matchesTheme = ajv.compile<MapTheme>(themeSchema);
 
 export function parseTheme(value: unknown): MapTheme {
@@ -93,7 +106,9 @@ export function parseTheme(value: unknown): MapTheme {
 }
 
 export function parseVisuals(value: unknown, city: City, theme: MapTheme): MapVisuals {
-  if (!matchesVisual(value)) throw new Error('Ungültiges Karten-Visualformat. ' + ajv.errorsText(matchesVisual.errors));
+  if (!matchesVisual(value) && !matchesVisualV2(value)) {
+    throw new Error('Ungültiges Karten-Visualformat.');
+  }
   if (value.worldId !== city.id || value.worldVersion !== city.version) {
     throw new Error('Visualdaten passen nicht zur Welt-ID oder Weltversion.');
   }
@@ -125,6 +140,12 @@ export function parseVisuals(value: unknown, city: City, theme: MapTheme): MapVi
       throw new Error('Gehwegbreite außerhalb des Straßenkorridors: ' + roadId);
     }
   }
+
+  if (city.version === 3 && value.visualVersion === 2) {
+    validateVisualV2(value, city);
+    return value;
+  }
+  if (city.version !== 2 || value.visualVersion !== 1) throw new Error('Inkompatible Welt- und Visualversion.');
 
   const landEdges = city.land.flatMap(ringEdges);
   const landAt = (point: Point) => city.land.some(ring => ringSide(point, ring) === 1);
@@ -172,4 +193,43 @@ export function parseVisuals(value: unknown, city: City, theme: MapTheme): MapVi
     }
   }
   return value;
+}
+
+function validateVisualV2(visual: VisualV2, city: CityV3) {
+  const { bounds } = city;
+  const aoi = validateArea(city.aoi, bounds);
+  const land = validateArea(city.land, bounds);
+  if (visual.roads.length !== city.roads.length) throw new Error('Fehlende gekappte Straßenfläche.');
+  const roadAreas = visual.roads.map(road => {
+    const area = validateArea(road.polygon, bounds);
+    if (!aoi.covers(area)) throw new Error('Straßenfläche außerhalb der AOI: ' + road.roadId);
+    return area;
+  });
+  const occupied = new SpatialIndex([...roadAreas, ...city.buildings.map(b => validateArea(b.footprint, bounds))],
+    area => area.bounds);
+  for (const surface of visual.surfaces) {
+    const area = validateArea(surface.polygon, bounds);
+    if (!land.covers(area) || occupied.query(area.bounds).some(feature => feature.overlaps(area))) {
+      throw new Error('Visualfläche außerhalb des freien Landes: ' + surface.id);
+    }
+  }
+  const boundary: Segment[] = [];
+  for (const { id, kind, path } of visual.coasts) {
+    if (!path.every(point => inBounds(point, bounds) && point.every(onMillimeterGrid))) {
+      throw new Error('Ungültige Küstenkoordinaten: ' + id);
+    }
+    for (const edge of segments(path, false)) {
+      const onAoi = aoi.samples(edge).every(point => aoi.side(point) === 0);
+      if (!land.samples(edge).every(point => land.side(point) === 0)
+        || (onAoi ? kind !== (city.boundaryMode === 'island' ? 'island' : 'cut') : kind !== 'shore')) {
+        throw new Error('Küstenart passt nicht zur Land- oder AOI-Grenze: ' + id);
+      }
+      boundary.push(edge);
+    }
+  }
+  if (!boundary.length) throw new Error('Fehlende Küstengrenzen.');
+  const coast = new AreaBoundary(boundary);
+  if (land.edges.some(edge => coast.samples(edge).some(point => coast.side(point) !== 0))) {
+    throw new Error('Unvollständige Küstengrenzen.');
+  }
 }

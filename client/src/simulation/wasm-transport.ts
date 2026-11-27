@@ -6,6 +6,8 @@ type FailureListener = (error: Error) => void;
 type AttachPort = (port: MessagePort, onFailure: FailureListener) => () => void;
 
 class WasmTransport implements Transport {
+  // A valid large world may still be validating in the worker when the map starts drawing.
+  readonly openTimeoutMs = 30_000;
   private port: MessagePort | null = null;
   private detach: (() => void) | null = null;
   private rejectOpen: ((reason: Error) => void) | null = null;

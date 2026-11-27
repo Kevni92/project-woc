@@ -144,7 +144,7 @@
           <span class="district-label" style:left={anchor.x + 'px'} style:top={anchor.y + 'px'}>{district.name}</span>
         {/if}
       {/each}
-      {#if water && frame.detail < 0.45}
+      {#if water && city.waterLabel && frame.detail < 0.45}
         <span class="water-label" style:left={water.x + 'px'} style:top={water.y + 'px'}>{city.waterLabel.name}</span>
       {/if}
     </div>
@@ -203,6 +203,10 @@
       </div>
       <button onclick={() => renderer?.reset()} aria-label="Karte zurücksetzen" title="Karte zurücksetzen">↺</button>
     </div>
+  {/if}
+  {#if world.osmAttribution}
+    <a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"
+      data-map-overlay>© OpenStreetMap contributors</a>
   {/if}
   {#if details}
     <MapPopover {anchor} {pins}>{@render details()}</MapPopover>

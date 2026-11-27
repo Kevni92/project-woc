@@ -4,6 +4,7 @@ export interface TransportListener {
 }
 
 export interface Transport {
+  readonly openTimeoutMs?: number;
   open(listener: TransportListener): Promise<void>;
   send(wire: string): void;
   close(): void;

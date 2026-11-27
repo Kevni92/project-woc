@@ -1,7 +1,7 @@
 import type { Bounds, Point } from './city-data';
 
 export type Segment = readonly [Point, Point];
-const epsilon = 1e-7;
+const epsilon = 1e-9;
 const cross = (ax: number, az: number, bx: number, bz: number) => ax * bz - az * bx;
 
 export function segments(points: readonly Point[], closed: boolean): Segment[] {
@@ -70,7 +70,7 @@ function intersectionParameters(first: Segment, second: Segment): number[] {
   const vX = dx - cx;
   const vZ = dz - cz;
   const det = cross(uX, uZ, vX, vZ);
-  if (Math.abs(det) < epsilon) {
+  if (Math.abs(det) < 1e-14) {
     return [
       ...second.filter(point => onSegment(point, first)).map(point => projection(point, first)),
       ...first.flatMap((point, index) => onSegment(point, second) ? [index] : []),

@@ -1,5 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute, ShapeUtils, Vector2 } from 'three';
 import type { Point } from './city-data';
+import { parts, type Area, type Ring } from './area-geometry';
 import { signedArea } from './map-geometry';
 
 export type Vertex = readonly [x: number, y: number, z: number];
@@ -32,10 +33,15 @@ export class MeshGeometry {
     this.top(a, c, d, shade);
   }
 
-  surface(points: readonly Point[], elevation: number, shade = 1) {
-    const vertices = points.map(point => raised(point, elevation));
-    const faces = ShapeUtils.triangulateShape(points.map(([x, z]) => new Vector2(x, z)), []);
+  surface(points: Ring, elevation: number, shade = 1, holes: readonly Ring[] = []) {
+    const vertices = [...points, ...holes.flat()].map(point => raised(point, elevation));
+    const vectors = (ring: Ring) => ring.map(([x, z]) => new Vector2(x, z));
+    const faces = ShapeUtils.triangulateShape(vectors(points), holes.map(vectors));
     for (const [a, b, c] of faces) this.top(vertices[a], vertices[b], vertices[c], shade);
+  }
+
+  area(geometry: Area | Ring, elevation: number, shade = 1) {
+    for (const { outer, holes } of parts(geometry)) this.surface(outer, elevation, shade, holes);
   }
 
   wall(a: Point, b: Point, bottom: number, top: number, clockwise: boolean, shade = 1) {

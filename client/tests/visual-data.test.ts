@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { parseCity } from '../src/render/city-data';
+import { validateArea } from '../src/render/area-geometry';
 import { containsRing, distanceSquaredBetween, isSimpleRing } from '../src/render/map-geometry';
+import { MeshGeometry } from '../src/render/mesh-geometry';
 import { parseTheme, parseVisuals } from '../src/render/visual-data';
 import { packageJson } from './package-files';
 
@@ -62,4 +64,26 @@ test('polygon containment checks the edges across concave land and detects self 
   expect(containsRing(land, [[0, 0], [10, 0], [5, 1]])).toBe(true);
   expect(isSimpleRing([[0, 0], [4, 0], [2, 0], [4, 2], [0, 2]])).toBe(false);
   expect(distanceSquaredBetween([[0, 0], [0, 5]], [[3, 2], [7, 2]])).toBe(9);
+});
+
+test('City v3 boundaries and triangulation retain a hole and a disjoint polygon', () => {
+  const outer = [[0, 0], [10, 0], [10, 10], [0, 10]] as const;
+  const hole = [[3, 3], [3, 7], [7, 7], [7, 3]] as const;
+  const island = [[12, 0], [14, 0], [14, 4], [12, 4]] as const;
+  const geometry = { polygons: [{ outer, holes: [hole] }, { outer: island, holes: [] }] };
+  const bounds = { minX: -1, maxX: 20, minZ: -1, maxZ: 20 };
+  const area = validateArea(geometry, bounds);
+  expect(area.side([5, 5])).toBe(-1);
+  expect(area.side([13, 2])).toBe(1);
+  expect(area.coversLine([[0, 5], [10, 5]])).toBe(false);
+  expect(() => validateArea({ polygons: [{ outer, holes: [island] }] }, bounds)).toThrow('Hole outside');
+  expect(() => validateArea({ polygons: [{ outer, holes: [] }, { outer, holes: [] }] }, bounds)).toThrow('Overlapping');
+  const mesh = new MeshGeometry();
+  mesh.area(geometry, 0);
+  let triangleArea = 0;
+  for (let i = 0; i < mesh.positions.length; i += 9) {
+    const [ax, , az, bx, , bz, cx, , cz] = mesh.positions.slice(i, i + 9);
+    triangleArea += Math.abs((bx - ax) * (cz - az) - (cx - ax) * (bz - az)) / 2;
+  }
+  expect(triangleArea).toBe(100 - 16 + 8);
 });

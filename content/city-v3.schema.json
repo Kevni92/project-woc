@@ -1,0 +1,459 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "name",
+    "bounds",
+    "start",
+    "land",
+    "districts",
+    "greens",
+    "roads",
+    "buildings",
+    "locations",
+    "navigation",
+    "aoi",
+    "boundaryMode"
+  ],
+  "properties": {
+    "version": {
+      "const": 3
+    },
+    "id": {
+      "$ref": "#/definitions/id"
+    },
+    "name": {
+      "$ref": "#/definitions/text"
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minX",
+        "maxX",
+        "minZ",
+        "maxZ"
+      ],
+      "properties": {
+        "minX": {
+          "type": "number"
+        },
+        "maxX": {
+          "type": "number"
+        },
+        "minZ": {
+          "type": "number"
+        },
+        "maxZ": {
+          "type": "number"
+        }
+      }
+    },
+    "start": {
+      "$ref": "#/definitions/point"
+    },
+    "land": {
+      "$ref": "#/definitions/area"
+    },
+    "greens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/area"
+      }
+    },
+    "districts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "label",
+          "outline"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "name": {
+            "$ref": "#/definitions/text"
+          },
+          "label": {
+            "$ref": "#/definitions/point"
+          },
+          "outline": {
+            "$ref": "#/definitions/area"
+          }
+        }
+      }
+    },
+    "roads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "width",
+          "path"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "kind": {
+            "enum": [
+              "avenue",
+              "street"
+            ]
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "path": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/definitions/point"
+            }
+          }
+        }
+      }
+    },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "district",
+          "height",
+          "footprint"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "district": {
+            "$ref": "#/definitions/id"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "footprint": {
+            "$ref": "#/definitions/area"
+          }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "type",
+          "district",
+          "position",
+          "description",
+          "access"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "name": {
+            "$ref": "#/definitions/text"
+          },
+          "type": {
+            "$ref": "#/definitions/text"
+          },
+          "district": {
+            "$ref": "#/definitions/id"
+          },
+          "building": {
+            "$ref": "#/definitions/id"
+          },
+          "position": {
+            "$ref": "#/definitions/point"
+          },
+          "description": {
+            "$ref": "#/definitions/text"
+          },
+          "access": {
+            "$ref": "#/definitions/id"
+          }
+        }
+      },
+      "minItems": 2
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "nodes",
+        "edges",
+        "spawns",
+        "ambientPatrol"
+      ],
+      "properties": {
+        "start": {
+          "$ref": "#/definitions/id"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "position"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/id"
+              },
+              "position": {
+                "$ref": "#/definitions/point"
+              }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "a",
+              "b",
+              "mode",
+              "lengthMm",
+              "path"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/id"
+              },
+              "a": {
+                "$ref": "#/definitions/id"
+              },
+              "b": {
+                "$ref": "#/definitions/id"
+              },
+              "mode": {
+                "const": "foot"
+              },
+              "lengthMm": {
+                "$ref": "#/definitions/positiveMm"
+              },
+              "path": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "$ref": "#/definitions/point"
+                }
+              }
+            }
+          }
+        },
+        "spawns": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "resident-ada",
+            "resident-ben",
+            "ambient-01"
+          ],
+          "properties": {
+            "resident-ada": {
+              "$ref": "#/definitions/spawn"
+            },
+            "resident-ben": {
+              "$ref": "#/definitions/spawn"
+            },
+            "ambient-01": {
+              "$ref": "#/definitions/spawn"
+            }
+          }
+        },
+        "ambientPatrol": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/id"
+          }
+        }
+      }
+    },
+    "waterLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "position"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/text"
+        },
+        "position": {
+          "$ref": "#/definitions/point"
+        }
+      }
+    },
+    "aoi": {
+      "type": "object",
+      "required": [
+        "polygons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "polygons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "outer",
+              "holes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "outer": {
+                "$ref": "#/definitions/ring"
+              },
+              "holes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ring"
+                }
+              }
+            }
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      }
+    },
+    "boundaryMode": {
+      "enum": [
+        "natural",
+        "island"
+      ]
+    }
+  },
+  "definitions": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "point": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": -10000,
+        "maximum": 10000
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "positiveMm": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000000
+    },
+    "spawn": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "node"
+          ],
+          "properties": {
+            "node": {
+              "$ref": "#/definitions/id"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "edge",
+            "offsetMm"
+          ],
+          "properties": {
+            "edge": {
+              "$ref": "#/definitions/id"
+            },
+            "offsetMm": {
+              "$ref": "#/definitions/positiveMm"
+            }
+          }
+        }
+      ]
+    },
+    "ring": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$ref": "#/definitions/point"
+      }
+    },
+    "area": {
+      "type": "object",
+      "required": [
+        "polygons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "polygons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "outer",
+              "holes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "outer": {
+                "$ref": "#/definitions/ring"
+              },
+              "holes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ring"
+                }
+              }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

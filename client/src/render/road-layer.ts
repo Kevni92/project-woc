@@ -1,7 +1,7 @@
 import { MeshGeometry, raised } from './mesh-geometry';
 import type { City, Point } from './city-data';
 import { distanceSquaredBetween, mixPoint, segments, type Segment } from './map-geometry';
-import type { MapTheme, RoadAppearance } from './visual-data';
+import type { MapTheme, MapVisuals } from './visual-data';
 
 export function roadMarkings(path: readonly Point[], dash: number, gap: number): Segment[] {
   const pieces: Segment[] = [];
@@ -54,11 +54,18 @@ function roundStroke(batch: MeshGeometry, path: readonly Point[], width: number,
   }
 }
 
-export function roadGeometry(city: City, appearances: readonly RoadAppearance[], theme: MapTheme) {
+export function roadGeometry(city: City, visuals: MapVisuals, theme: MapTheme) {
   const batches = { roadEdge: new MeshGeometry(), roadLocal: new MeshGeometry(), roadMain: new MeshGeometry(), marking: new MeshGeometry() };
-  const byId = new Map(appearances.map(road => [road.roadId, road]));
-  const corridors = city.roads.map(road => ({ road, edges: segments(road.path, false) }));
   const { layerStepM: step, roads: rules } = theme;
+  if (visuals.visualVersion === 2) {
+    for (const road of visuals.roads) {
+      const isMain = road.profile === 'main';
+      batches[isMain ? 'roadMain' : 'roadLocal'].area(road.polygon, (isMain ? 10 : 9) * step);
+    }
+    return batches;
+  }
+  const byId = new Map(visuals.roads.map(road => [road.roadId, road]));
+  const corridors = city.roads.map(road => ({ road, edges: segments(road.path, false) }));
   for (const { road } of corridors) {
     const appearance = byId.get(road.id);
     const profile = appearance?.profile ?? (road.kind === 'avenue' ? 'main' : 'local');

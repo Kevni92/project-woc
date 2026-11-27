@@ -36,8 +36,9 @@ content::LoadedWorld read_package(const std::filesystem::path& directory) {
     }
     const auto manifest = parse_manifest(read_bytes(root, "manifest.json", max_manifest_bytes));
     auto world = load_world(manifest, read_bytes(root, manifest.file(FileRole::world).path,
-        manifest.file(FileRole::world).bytes));
-    for (auto role : {FileRole::visual, FileRole::theme, FileRole::provenance}) {
+        manifest.file(FileRole::world).bytes), read_bytes(root, manifest.file(FileRole::visual).path,
+        manifest.file(FileRole::visual).bytes));
+    for (auto role : {FileRole::theme, FileRole::provenance}) {
         const auto& file = manifest.file(role);
         validate_presentation_file(manifest, role, read_bytes(root, file.path, file.bytes));
     }

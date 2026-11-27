@@ -17,6 +17,7 @@ import { projectMap } from '../src/ui/map-projection';
 
 const definition = packageJson('breakwater', 'world.json');
 const city = parseCity(definition);
+if (city.version !== 2) throw new Error('Expected the legacy Breakwater fixture');
 const theme = parseTheme(packageJson('breakwater', 'theme.json'));
 const visuals = parseVisuals(packageJson('breakwater', 'visual.json'), city, theme);
 

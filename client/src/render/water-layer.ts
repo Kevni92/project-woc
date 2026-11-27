@@ -2,6 +2,8 @@ import {
   Color, DataTexture, LinearFilter, Mesh, PlaneGeometry, RedFormat, ShaderMaterial, UnsignedByteType,
 } from 'three';
 import type { Bounds, City, Point } from './city-data';
+import { segmentBounds, SpatialIndex, type Area } from './area-geometry';
+import { MeshGeometry } from './mesh-geometry';
 import { ringEdges, type Segment } from './map-geometry';
 import type { MapTheme } from './visual-data';
 import type { Palette } from './palette';
@@ -9,6 +11,7 @@ import type { Palette } from './palette';
 const pointKey = ([x, z]: Point) => x + '/' + z;
 
 export function extendLand(city: City, coast: readonly Segment[], margin: number) {
+  if (city.version === 3) return { skirts: [], coast };
   const { bounds } = city;
   const clips = city.land.flatMap(ringEdges).filter(([[x, z], [nextX, nextZ]]) =>
     (x === nextX && (x === bounds.minX || x === bounds.maxX))
@@ -46,11 +49,13 @@ export function extendLand(city: City, coast: readonly Segment[], margin: number
 
 export function depthSamples(bounds: Bounds, shore: readonly Segment[], resolution: number, horizon: number) {
   const depths = new Uint8Array(resolution * resolution);
-  const segments = shore.map(([[x, z], [nextX, nextZ]]) => {
+  const segments = shore.map(edge => {
+    const [[x, z], [nextX, nextZ]] = edge;
     const dx = nextX - x;
     const dz = nextZ - z;
-    return { x, z, dx, dz, inverseLengthSquared: 1 / (dx * dx + dz * dz) };
+    return { x, z, dx, dz, bounds: segmentBounds(edge), inverseLengthSquared: 1 / (dx * dx + dz * dz) };
   });
+  const index = new SpatialIndex(segments, segment => segment.bounds);
   const stepX = (bounds.maxX - bounds.minX) / resolution;
   const stepZ = (bounds.maxZ - bounds.minZ) / resolution;
   for (let row = 0; row < resolution; row++) {
@@ -58,7 +63,7 @@ export function depthSamples(bounds: Bounds, shore: readonly Segment[], resoluti
     for (let col = 0; col < resolution; col++) {
       const x = bounds.minX + (col + 0.5) * stepX;
       let closest = horizon * horizon;
-      for (const segment of segments) {
+      for (const segment of index.query({ minX: x - horizon, maxX: x + horizon, minZ: z - horizon, maxZ: z + horizon })) {
         const px = x - segment.x;
         const pz = z - segment.z;
         const t = Math.max(0, Math.min(1, (px * segment.dx + pz * segment.dz) * segment.inverseLengthSquared));
@@ -71,14 +76,14 @@ export function depthSamples(bounds: Bounds, shore: readonly Segment[], resoluti
 }
 
 export class WaterLayer {
-  readonly mesh: Mesh<PlaneGeometry, ShaderMaterial>;
+  readonly mesh: Mesh<import('three').BufferGeometry, ShaderMaterial>;
   private readonly texture: DataTexture;
   private readonly shallow = new Color();
   private readonly mid = new Color();
   private readonly deep = new Color();
   private readonly horizon = new Color();
 
-  constructor(bounds: Bounds, shore: readonly Segment[], theme: MapTheme['water']) {
+  constructor(bounds: Bounds, shore: readonly Segment[], theme: MapTheme['water'], mask?: Area) {
     const { minX, maxX, minZ, maxZ } = bounds;
     const [midAt, deepAt, horizonAt] = theme.distanceM;
     const { resolution } = theme;
@@ -96,11 +101,15 @@ export class WaterLayer {
         mid: { value: this.mid },
         deep: { value: this.deep },
         horizon: { value: this.horizon },
+        origin: { value: [minX, maxZ] },
+        span: { value: [maxX - minX, minZ - maxZ] },
       },
       vertexShader: `
         varying vec2 depthUv;
+        uniform vec2 origin;
+        uniform vec2 span;
         void main() {
-          depthUv = uv;
+          depthUv = ((modelMatrix * vec4(position, 1.0)).xz - origin) / span;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
@@ -123,9 +132,15 @@ export class WaterLayer {
         }
       `,
     });
-    const plane = new PlaneGeometry(maxX - minX, maxZ - minZ).rotateX(-Math.PI / 2);
-    this.mesh = new Mesh(plane, material);
-    this.mesh.position.set((minX + maxX) / 2, -0.06, (minZ + maxZ) / 2);
+    if (mask) {
+      const water = new MeshGeometry();
+      water.area(mask, -0.06);
+      this.mesh = new Mesh(water.geometry(), material);
+    } else {
+      const plane = new PlaneGeometry(maxX - minX, maxZ - minZ).rotateX(-Math.PI / 2);
+      this.mesh = new Mesh(plane, material);
+      this.mesh.position.set((minX + maxX) / 2, -0.06, (minZ + maxZ) / 2);
+    }
   }
 
   setPalette(palette: Palette) {

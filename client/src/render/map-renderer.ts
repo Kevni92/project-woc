@@ -1,4 +1,4 @@
-import { Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
+import { Color, Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -7,6 +7,7 @@ import { GeographyLayer } from './geography-layer';
 import { layoutMarkers } from './map-anchors';
 import { MapPalette, twilight } from './palette';
 import type { City, Point } from './city-data';
+import { parts } from './area-geometry';
 import type { Anchor, MarkerLayout, ScreenAnchor } from './map-anchors';
 import type { Route } from '../simulation/protocol';
 import type { MapTheme, MapVisuals } from './visual-data';
@@ -37,7 +38,8 @@ export class MapRenderer {
   private readonly observer: ResizeObserver;
   private readonly events = new AbortController();
   private readonly districts: Anchor[];
-  private readonly water: Anchor;
+  private readonly water?: Anchor;
+  private readonly outside?: Color;
   private readonly locations: Anchor[];
   private readonly buildings: ReadonlyMap<string, Anchor>;
   private readonly raycaster = new Raycaster();
@@ -69,7 +71,8 @@ export class MapRenderer {
     this.view = new MapCamera(city.bounds, theme.lod);
     this.palette = new MapPalette(theme);
     this.districts = city.districts.map(district => ({ id: district.id, position: district.label }));
-    this.water = { id: city.id, position: city.waterLabel.position };
+    this.water = city.waterLabel && { id: city.id, position: city.waterLabel.position };
+    if (city.version === 3 && city.boundaryMode === 'natural') this.outside = new Color('#303639');
     const heights = new Map(city.buildings.map(building => [building.id, building.height]));
     this.locations = city.locations.map(location => ({
       id: location.id,
@@ -77,8 +80,9 @@ export class MapRenderer {
       height: location.building ? heights.get(location.building) : undefined,
     }));
     this.buildings = new Map(city.buildings.map(({ id, footprint, height }) => {
-      const center = footprint.reduce(([x, z], [px, pz]) => [x + px, z + pz], [0, 0]);
-      return [id, { id, position: [center[0] / footprint.length, center[1] / footprint.length], height }];
+      const ring = parts(footprint)[0].outer;
+      const center = ring.reduce(([x, z], [px, pz]) => [x + px, z + pz], [0, 0]);
+      return [id, { id, position: [center[0] / ring.length, center[1] / ring.length], height }];
     }));
     this.scene.add(this.geography.group);
     this.routeLine.visible = false;
@@ -106,7 +110,7 @@ export class MapRenderer {
     if (daylight === this.daylight) return;
     this.daylight = daylight;
     const palette = this.palette.at(daylight);
-    this.scene.background = palette.waterHorizon;
+    this.scene.background = this.outside ?? palette.waterHorizon;
     this.labelColor = '#' + palette.label.getHexString();
     this.geography.setPalette(palette);
     this.routeLine.material.color.copy(palette.route);
@@ -222,7 +226,7 @@ export class MapRenderer {
     const building = this.selectedBuilding ? this.buildings.get(this.selectedBuilding) : undefined;
     this.onFrame({
       districts: new Map(project(this.districts).map(anchor => [anchor.id, anchor])),
-      water: project([this.water])[0],
+      water: this.water && project([this.water])[0],
       locations: new Map(layout.slice(characters.length).map(anchor => [anchor.id, anchor])),
       characters: new Map(layout.slice(0, characters.length).map(anchor => [anchor.id, anchor])),
       building: building && project([building])[0],

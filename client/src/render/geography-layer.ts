@@ -1,10 +1,11 @@
 import { BufferGeometry, Group, Mesh, MeshBasicMaterial, type Raycaster } from 'three';
 import { BuildingLayer } from './building-layer';
 import { segments, mixPoint, ringSide } from './map-geometry';
+import type { Area, Ring } from './area-geometry';
 import { MeshGeometry } from './mesh-geometry';
 import { roadGeometry } from './road-layer';
 import { extendLand, WaterLayer } from './water-layer';
-import type { City, Point } from './city-data';
+import type { City, CityV2, Point } from './city-data';
 import type { Palette } from './palette';
 import type { ColorRole, MapTheme, MapVisuals, SurfaceKind } from './visual-data';
 
@@ -20,28 +21,31 @@ export class GeographyLayer {
 
   constructor(city: City, visuals: MapVisuals, theme: MapTheme) {
     const margin = Math.max(city.bounds.maxX - city.bounds.minX, city.bounds.maxZ - city.bounds.minZ, theme.water.distanceM[2]);
-    const { skirts, coast } = extendLand(city, visuals.coasts.flatMap(({ path }) => segments(path, false)), margin);
+    const coastline = (visuals.visualVersion === 2 ? visuals.coasts.filter(shore => shore.kind !== 'cut') : visuals.coasts)
+      .flatMap(({ path }) => segments(path, false));
+    const { skirts, coast } = city.version === 2 ? extendLand(city, coastline, margin) : { skirts: [], coast: coastline };
     const bounds = {
       minX: city.bounds.minX - margin, maxX: city.bounds.maxX + margin,
       minZ: city.bounds.minZ - margin, maxZ: city.bounds.maxZ + margin,
     };
-    this.water = new WaterLayer(bounds, coast, theme.water);
+    const mask = city.version === 3 && city.boundaryMode === 'natural' ? city.aoi : undefined;
+    this.water = new WaterLayer(mask ? city.bounds : bounds, coast, theme.water, mask);
     this.group.add(this.water.mesh);
     const step = theme.layerStepM;
-    this.polygons([...city.land, ...skirts], 'land', 0);
+    this.polygons(city.version === 2 ? [...city.land, ...skirts] : [city.land], 'land', 0);
     this.polygons(city.districts.map(district => district.outline), 'district', step);
     this.polygons(city.greens, 'grass', step * 2);
     surfaces.forEach((kind, index) => this.polygons(
       visuals.surfaces.filter(surface => surface.kind === kind).map(surface => surface.polygon), kind, (index + 3) * step,
     ));
-    const { roadEdge, roadLocal, roadMain, marking } = roadGeometry(city, visuals.roads, theme);
+    const { roadEdge, roadLocal, roadMain, marking } = roadGeometry(city, visuals, theme);
     this.mesh(roadEdge, 'roadEdge');
     this.mesh(roadLocal, 'roadLocal');
     this.mesh(roadMain, 'roadMain');
     this.markings = this.mesh(marking, 'marking');
     this.buildings = new BuildingLayer(city, visuals.buildings, theme, role => this.material(role));
     this.group.add(this.buildings.group);
-    this.piles = this.buildPiers(city, visuals);
+    if (city.version === 2) this.piles = this.buildPiers(city, visuals);
   }
 
   setPalette(palette: Palette) {
@@ -94,13 +98,13 @@ export class GeographyLayer {
     return mesh;
   }
 
-  private polygons(polygons: readonly (readonly Point[])[], role: ColorRole, elevation: number) {
+  private polygons(polygons: readonly (Area | Ring)[], role: ColorRole, elevation: number) {
     const batch = new MeshGeometry();
-    for (const polygon of polygons) batch.surface(polygon, elevation);
+    for (const polygon of polygons) batch.area(polygon, elevation);
     this.mesh(batch, role);
   }
 
-  private buildPiers(city: City, visuals: MapVisuals) {
+  private buildPiers(city: CityV2, visuals: MapVisuals) {
     const decks = new MeshGeometry();
     const supports = new MeshGeometry();
     for (const { polygon, elevationM } of visuals.decorations) {

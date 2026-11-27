@@ -53,6 +53,7 @@ export class SimulationClient {
     try {
       transport = this.factory();
       this.transport = transport;
+      const openTimeout = transport.openTimeoutMs ?? TIMEOUT_MS;
       await Promise.race([
         transport.open({
           message: wire => {
@@ -63,7 +64,7 @@ export class SimulationClient {
           },
         }),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error('CONNECT_TIMEOUT')), TIMEOUT_MS);
+          timer = setTimeout(() => reject(new Error('CONNECT_TIMEOUT')), openTimeout);
         }),
       ]);
       if (this.transport !== transport) throw new Error('TRANSPORT_CLOSED');

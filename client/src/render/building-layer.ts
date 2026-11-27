@@ -1,5 +1,6 @@
 import { BufferGeometry, Group, Mesh, MeshBasicMaterial, type Raycaster } from 'three';
 import type { Building, City, Point } from './city-data';
+import { parts, type Area, type Ring } from './area-geometry';
 import { mixPoint, ringEdges, signedArea } from './map-geometry';
 import { MeshGeometry, raised } from './mesh-geometry';
 import type { BuildingAppearance, ColorRole, MapTheme, MapVisuals, Windows } from './visual-data';
@@ -55,9 +56,9 @@ function flatRoof(rectangle: Rectangle, eave: number, height: number, trim: Mesh
 
 function wallsAndWindows(
   footprint: readonly Point[], height: number, walls: MeshGeometry, windows: MeshGeometry,
-  style: Windows, floorHeight: number, spacing: number,
+  style: Windows, floorHeight: number, spacing: number, inward = false,
 ) {
-  const clockwise = signedArea(footprint) > 0;
+  const clockwise = (signedArea(footprint) > 0) !== inward;
   const rows = Math.min(5, Math.floor(height / floorHeight));
   for (const [a, b] of ringEdges(footprint)) {
     const dx = b[0] - a[0];
@@ -136,13 +137,13 @@ export class BuildingLayer {
       const color = roofRoles[appearance?.profile ?? 'commercial'];
       const flat = batch(flats, color);
       const start = flat.geometry.faceCount;
-      flat.geometry.surface(building.footprint, 0);
+      flat.geometry.area(building.footprint, 0);
       const flatRange = record(flat, building.id, start);
       const roof = batch(volumes, color);
       const walls = batch(volumes, 'wall');
       const trim = batch(volumes, 'roofTrim');
       const starts = [roof, walls, trim].map(({ geometry }) => geometry.faceCount);
-      const [x, z] = building.footprint[0];
+      const [x, z] = parts(building.footprint)[0].outer[0];
       const cell = Math.floor(x / 175) + '/' + Math.floor(z / 175);
       let facade = windows.get(cell);
       if (!facade) {
@@ -154,8 +155,12 @@ export class BuildingLayer {
       record(walls, building.id, starts[1]);
       record(trim, building.id, starts[2]);
       this.ranges.set(building.id, { flat: flatRange, roof: roofRange });
-      shadows.surface(building.footprint.map(([x, z]) => [x + building.height * 0.24, z + building.height * 0.31]),
-        theme.layerStepM * 7.5);
+      if (city.version === 2) {
+        const offset = (ring: Ring): Point[] => ring.map(([x, z]) => [x + building.height * 0.24, z + building.height * 0.31]);
+        for (const { outer, holes } of parts(building.footprint)) {
+          shadows.surface(offset(outer), theme.layerStepM * 7.5, 1, holes.map(offset));
+        }
+      }
     }
     for (const [entries, group, pick] of [[flats, this.flat, this.flatPick], [volumes, this.volumes, this.volumePick]] as const) {
       for (const [color, { geometry, owners }] of entries) {
@@ -183,19 +188,25 @@ export class BuildingLayer {
   }
 
   private buildVolume(
-    { footprint, height }: Building, appearance: BuildingAppearance | undefined, theme: MapTheme,
+    { footprint, height }: Building<Area | Ring>, appearance: BuildingAppearance | undefined, theme: MapTheme,
     roof: MeshGeometry, walls: MeshGeometry, trim: MeshGeometry, windows: MeshGeometry,
   ) {
     const rules = theme.buildings[appearance?.profile ?? 'commercial'];
-    const rectangle = longRectangle(footprint);
+    const polygons = parts(footprint);
+    const rectangle = polygons.length === 1 && !polygons[0].holes.length ? longRectangle(polygons[0].outer) : undefined;
     const gabled = (appearance?.roof ?? rules.roof) === 'gabled' && rectangle;
     const flatDetail = rules.flatDetail;
     const trimHeight = rectangle && flatDetail !== 'none' ? Math.min(rules.trimHeightM, height * 0.19) : 0;
     const eave = height - (gabled ? appearance?.roofHeightM ?? height * rules.roofFraction : trimHeight);
-    wallsAndWindows(footprint, eave, walls, windows, appearance?.windows ?? rules.windows, rules.floorHeightM, rules.windowSpacingM);
+    const wall = (ring: Ring, inward: boolean) =>
+      wallsAndWindows(ring, eave, walls, windows, appearance?.windows ?? rules.windows, rules.floorHeightM, rules.windowSpacingM, inward);
+    for (const { outer, holes } of polygons) {
+      wall(outer, false);
+      for (const hole of holes) wall(hole, true);
+    }
     if (gabled) gabledRoof(gabled, eave, height, roof, walls);
     else {
-      roof.surface(footprint, eave);
+      roof.area(footprint, eave);
       if (rectangle && trimHeight && flatDetail !== 'none') flatRoof(rectangle, eave, height, trim, flatDetail);
     }
   }

@@ -36,7 +36,8 @@ struct LoadedWorld {
 };
 
 [[nodiscard]] PackageManifest parse_manifest(std::string_view bytes);
-[[nodiscard]] LoadedWorld load_world(const PackageManifest& manifest, std::string_view bytes);
+[[nodiscard]] LoadedWorld load_world(const PackageManifest& manifest, std::string_view bytes,
+                                    std::optional<std::string_view> visual_bytes = std::nullopt);
 void validate_presentation_file(const PackageManifest& manifest, FileRole role, std::string_view bytes);
 
 }

@@ -1,4 +1,5 @@
 #include "content/city.hpp"
+#include "content/area_geometry.hpp"
 #include "schemas.hpp"
 
 #include <algorithm>
@@ -14,7 +15,6 @@ namespace {
 
 using Json = nlohmann::json;
 using Polygon = std::vector<Position>;
-constexpr unsigned content_version = 2;
 
 void require(bool condition, std::string_view message) {
     if (!condition) throw std::invalid_argument("Invalid city: " + std::string(message));
@@ -55,14 +55,6 @@ Distance positive_length(const Json& value) {
     return value.get<Distance>();
 }
 
-Distance cross(Position a, Position b) {
-    return a.x * b.z - a.z * b.x;
-}
-
-Position difference(Position a, Position b) {
-    return {a.x - b.x, a.z - b.z};
-}
-
 bool intersects(Position a, Position b, Position c, Position d) {
     if (std::max(a.x, b.x) < std::min(c.x, d.x) || std::max(c.x, d.x) < std::min(a.x, b.x)
         || std::max(a.z, b.z) < std::min(c.z, d.z) || std::max(c.z, d.z) < std::min(a.z, b.z)) return false;
@@ -76,6 +68,11 @@ bool intersects(Position a, Position b, Position c, Position d) {
 }
 
 void validate_polygon(const Polygon& polygon) {
+    std::vector<Box> boxes;
+    for (std::size_t i = 0; i < polygon.size(); ++i) {
+        boxes.push_back(Segment{polygon[i], polygon[(i + 1) % polygon.size()]}.bounds());
+    }
+    const SpatialIndex index(std::move(boxes));
     double area = 0;
     for (std::size_t i = 0; i < polygon.size(); ++i) {
         const auto a = polygon[i];
@@ -86,12 +83,102 @@ void validate_polygon(const Polygon& polygon) {
         require(a != b && (cross(along, next) != 0 || along.x * next.x + along.z * next.z > 0),
             "invalid polygon segment");
         area += cross(a, b);
-        for (auto j = i + 2; j < polygon.size(); ++j) {
-            if (i == 0 && j == polygon.size() - 1) continue;
+        index.query(Segment{a, b}.bounds(), [&](auto j) {
+            if (j < i + 2 || (i == 0 && j == polygon.size() - 1)) return;
             require(!intersects(a, b, polygon[j], polygon[(j + 1) % polygon.size()]), "intersecting polygon segments");
-        }
+        });
     }
     require(area != 0, "polygon without area");
+}
+
+AreaBoundary ring_boundary(const Json& ring, const Box& bounds) {
+    const auto polygon = points(ring);
+    for (auto p : polygon) require(bounds.contains(p.x, p.z), "ring outside world bounds");
+    validate_polygon(polygon);
+    std::vector<Segment> edges;
+    for (std::size_t i = 0; i < polygon.size(); ++i) {
+        edges.push_back({polygon[i], polygon[(i + 1) % polygon.size()]});
+    }
+    return AreaBoundary(std::move(edges));
+}
+
+bool shared_line(Segment a, Segment b) {
+    const auto direction = difference(a.b, a.a);
+    if (cross(direction, difference(b.a, a.a)) || cross(direction, difference(b.b, a.a))) return false;
+    const auto x = a.bounds();
+    const auto y = b.bounds();
+    return std::max(x.min_x, y.min_x) < std::min(x.max_x, y.max_x)
+        || std::max(x.min_z, y.min_z) < std::min(x.max_z, y.max_z);
+}
+
+bool shares_line(const AreaBoundary& a, const AreaBoundary& b) {
+    return std::ranges::any_of(a.edges(), [&](auto edge) {
+        bool shared = false;
+        b.nearby(edge, [&](auto i) { shared = shared || shared_line(edge, b.edges()[i]); });
+        return shared;
+    });
+}
+
+bool overlaps(const AreaBoundary& a, const AreaBoundary& b) {
+    if (a.has_interior_on(b) || b.has_interior_on(a)) return true;
+    return std::ranges::any_of(a.edges(), [&](auto edge) {
+        bool overlap = false;
+        b.nearby(edge, [&](auto i) {
+            const auto other = b.edges()[i];
+            if (!shared_line(edge, other)) return;
+            const auto span = edge.bounds();
+            const auto range = other.bounds();
+            const auto x = (std::max(span.min_x, range.min_x) + std::min(span.max_x, range.max_x)) / 2;
+            const auto z = (std::max(span.min_z, range.min_z) + std::min(span.max_z, range.max_z)) / 2;
+            const auto delta = difference(edge.b, edge.a);
+            const auto step = 1e-4 / std::hypot(delta.x, delta.z);
+            for (double sign : {-1, 1}) {
+                const auto px = x + sign * step * delta.z, pz = z - sign * step * delta.x;
+                overlap = overlap || (a.side(px, pz) > 0 && b.side(px, pz) > 0);
+            }
+        });
+        return overlap;
+    });
+}
+
+SpatialIndex index_areas(const std::vector<AreaBoundary>& areas) {
+    std::vector<Box> boxes;
+    for (const auto& area : areas) boxes.push_back(area.bounds());
+    return SpatialIndex(std::move(boxes));
+}
+
+void validate_disjoint(const std::vector<AreaBoundary>& areas) {
+    const auto index = index_areas(areas);
+    for (std::size_t i = 0; i < areas.size(); ++i) {
+        const auto& a = areas[i];
+        index.query(a.bounds(), [&](auto j) {
+            if (j <= i) return;
+            const auto& b = areas[j];
+            require(!a.has_interior_on(b) && !b.has_interior_on(a) && !shares_line(a, b),
+                "overlapping polygon parts or holes");
+        });
+    }
+}
+
+AreaBoundary area_boundary(const Json& area, const Box& bounds) {
+    std::vector<AreaBoundary> parts;
+    std::vector<Segment> area_edges;
+    for (const auto& part : area.at("polygons")) {
+        const auto outer = ring_boundary(part.at("outer"), bounds);
+        std::vector<AreaBoundary> holes;
+        auto edges = outer.edges();
+        for (const auto& ring : part.at("holes")) {
+            auto hole = ring_boundary(ring, bounds);
+            require(outer.covers(hole) && !shares_line(outer, hole), "hole outside polygon");
+            edges.insert(edges.end(), hole.edges().begin(), hole.edges().end());
+            holes.push_back(std::move(hole));
+        }
+        validate_disjoint(holes);
+        area_edges.insert(area_edges.end(), edges.begin(), edges.end());
+        parts.emplace_back(std::move(edges));
+    }
+    validate_disjoint(parts);
+    return AreaBoundary(std::move(area_edges));
 }
 
 void validate_geography(const Json& city, const Navigation& navigation,
@@ -111,9 +198,10 @@ void validate_geography(const Json& city, const Navigation& navigation,
     };
     for (const auto& polygon : land) check_polygon(polygon);
     for (const auto& polygon : buildings) check_polygon(polygon);
-    for (const auto& polygon : city.at("greens")) check_polygon(points(polygon));
+    const bool legacy = city.at("version") == 2;
+    if (legacy) for (const auto& polygon : city.at("greens")) check_polygon(points(polygon));
     check_point(point(city.at("start")));
-    check_point(point(city.at("waterLabel").at("position")));
+    if (city.contains("waterLabel")) check_point(point(city.at("waterLabel").at("position")));
 
     std::set<std::string> ids{identifier(city.at("id"))};
     const auto add_id = [&](const std::string& id) {
@@ -125,7 +213,7 @@ void validate_geography(const Json& city, const Navigation& navigation,
         add_id(id);
         districts.insert(id);
         check_point(point(district.at("label")));
-        check_polygon(points(district.at("outline")));
+        if (legacy) check_polygon(points(district.at("outline")));
     }
     const auto district_id = [&](const Json& feature) {
         const auto id = identifier(feature.at("district"));
@@ -160,6 +248,56 @@ void validate_geography(const Json& city, const Navigation& navigation,
     for (const auto& edge : navigation.edges()) {
         add_id(edge.id);
         for (auto p : edge.path) check_point(p);
+    }
+}
+
+Box city_bounds(const Json& city) {
+    const auto& bounds = city.at("bounds");
+    return {static_cast<double>(millimeters(bounds.at("minX"))), static_cast<double>(millimeters(bounds.at("minZ"))),
+            static_cast<double>(millimeters(bounds.at("maxX"))), static_cast<double>(millimeters(bounds.at("maxZ")))};
+}
+
+void validate_city_v3(const Json& city, const Navigation& navigation) {
+    const auto box = city_bounds(city);
+    const auto aoi = area_boundary(city.at("aoi"), box);
+    const auto land = area_boundary(city.at("land"), box);
+    require(aoi.covers(land), "land outside AOI");
+    std::vector<AreaBoundary> buildings;
+    for (const auto& building : city.at("buildings")) {
+        auto footprint = area_boundary(building.at("footprint"), box);
+        require(land.covers(footprint), "building outside land");
+        buildings.push_back(std::move(footprint));
+    }
+    const auto building_index = index_areas(buildings);
+    for (const auto& green : city.at("greens")) require(land.covers(area_boundary(green, box)), "green outside land");
+    for (const auto& district : city.at("districts")) {
+        const auto outline = area_boundary(district.at("outline"), box);
+        const auto label = point(district.at("label"));
+        require(land.covers(outline) && outline.side(label.x, label.z) >= 0, "district outside land or label outside district");
+    }
+    for (const auto& location : city.at("locations")) {
+        const auto p = point(location.at("position"));
+        require(land.side(p.x, p.z) >= 0, "location outside land");
+    }
+    for (const auto& road : city.at("roads")) {
+        const auto path = points(road.at("path"));
+        for (std::size_t i = 1; i < path.size(); ++i) {
+            require(aoi.covers(Segment{path[i - 1], path[i]}), "road outside AOI");
+        }
+    }
+    for (const auto& edge : navigation.edges()) {
+        for (std::size_t i = 1; i < edge.path.size(); ++i) {
+            const Segment segment{edge.path[i - 1], edge.path[i]};
+            require(land.covers(segment), "edge outside land: " + edge.id);
+            building_index.query(segment.bounds(), [&](auto j) {
+                const auto& building = buildings[j];
+                std::vector<double> cuts;
+                building.cuts(segment, cuts);
+                require(along_segment(segment, std::move(cuts), [&](double x, double z) {
+                    return building.side(x, z) < 0;
+                }), "blocked edge " + edge.id);
+            });
+        }
     }
 }
 
@@ -225,9 +363,10 @@ bool walkable(Position a, Position b, const std::vector<Polygon>& land,
 
 Json validate_city_json(std::string_view source) {
     static const nlohmann::json_schema::json_validator validator(Json::parse(schemas::city));
+    static const nlohmann::json_schema::json_validator validator_v3(Json::parse(schemas::city_v3));
     try {
         auto city = Json::parse(source);
-        validator.validate(city);
+        (city.is_object() && city.value("version", 0) == 3 ? validator_v3 : validator).validate(city);
         return city;
     } catch (const std::exception& error) {
         throw std::invalid_argument(std::string("Invalid city schema: ") + error.what());
@@ -239,11 +378,10 @@ WorldDefinition load_city(std::string_view source) {
 }
 
 WorldDefinition parse_city(const Json& city) {
-    require(city.at("version") == content_version, "unsupported content version");
+    const auto version = city.at("version").get<unsigned>();
+    require(version == 2 || version == 3, "unsupported content version");
     const auto& graph = city.at("navigation");
     require(graph.at("nodes").is_array() && graph.at("edges").is_array(), "invalid navigation lists");
-    require(city.at("land").is_array() && city.at("buildings").is_array()
-        && city.at("locations").is_array(), "invalid geography lists");
 
     std::vector<Node> nodes;
     std::vector<Edge> edges;
@@ -274,14 +412,18 @@ WorldDefinition parse_city(const Json& city) {
     Navigation navigation(std::move(nodes), std::move(edges));
     std::vector<Polygon> land;
     std::vector<Polygon> buildings;
-    for (const auto& polygon : city.at("land")) land.push_back(points(polygon));
-    for (const auto& building : city.at("buildings")) buildings.push_back(points(building.at("footprint")));
-    require(!land.empty() && std::ranges::all_of(land, [](const auto& p) { return p.size() >= 3; })
-        && std::ranges::all_of(buildings, [](const auto& p) { return p.size() >= 3; }), "invalid polygons");
+    if (version == 2) {
+        for (const auto& polygon : city.at("land")) land.push_back(points(polygon));
+        for (const auto& building : city.at("buildings")) buildings.push_back(points(building.at("footprint")));
+    }
     validate_geography(city, navigation, land, buildings);
-    for (const auto& edge : navigation.edges()) {
-        for (std::size_t i = 1; i < edge.path.size(); ++i) {
-            require(walkable(edge.path[i - 1], edge.path[i], land, buildings), "blocked edge " + edge.id);
+    if (version == 3) {
+        validate_city_v3(city, navigation);
+    } else {
+        for (const auto& edge : navigation.edges()) {
+            for (std::size_t i = 1; i < edge.path.size(); ++i) {
+                require(walkable(edge.path[i - 1], edge.path[i], land, buildings), "blocked edge " + edge.id);
+            }
         }
     }
 
@@ -325,8 +467,91 @@ WorldDefinition parse_city(const Json& city) {
     const std::array waypoints{node_index(patrol.at(0)), node_index(patrol.at(1))};
     require(waypoints[0] != waypoints[1] && spawn_positions.back() == GraphPosition{.node = waypoints[0]},
         "invalid ambient start or waypoint");
-    return {identifier(city.at("id")), content_version, std::move(navigation), start, std::move(locations),
+    return {identifier(city.at("id")), version, std::move(navigation), start, std::move(locations),
             spawn_positions, waypoints};
+}
+
+void validate_visual_v2(const Json& city, const Json& visual) {
+    const auto bounds = city_bounds(city);
+    const auto aoi = area_boundary(city.at("aoi"), bounds);
+    const auto land = area_boundary(city.at("land"), bounds);
+    std::set<std::string> ids{identifier(city.at("id"))};
+    for (const auto* key : {"buildings", "roads", "districts", "locations"}) {
+        for (const auto& entry : city.at(key)) ids.insert(identifier(entry.at("id")));
+    }
+    for (const auto* key : {"nodes", "edges"}) {
+        for (const auto& entry : city.at("navigation").at(key)) ids.insert(identifier(entry.at("id")));
+    }
+    std::map<std::string, double> heights, widths;
+    std::vector<AreaBoundary> occupied;
+    for (const auto& building : city.at("buildings")) {
+        heights.emplace(identifier(building.at("id")), building.at("height").get<double>());
+        occupied.push_back(area_boundary(building.at("footprint"), bounds));
+    }
+    for (const auto& appearance : visual.at("buildings")) {
+        const auto id = identifier(appearance.at("buildingId"));
+        const auto building = heights.find(id);
+        require(building != heights.end(), "visual building reference " + id);
+        if (appearance.contains("roofHeightM")) {
+            require(appearance.at("roofHeightM").get<double>() < building->second
+                && appearance.value("roof", std::string("gabled")) == "gabled", "visual roof height " + id);
+        }
+        heights.erase(building);
+    }
+    for (const auto& road : city.at("roads")) widths.emplace(identifier(road.at("id")), road.at("width").get<double>());
+    for (const auto& road : visual.at("roads")) {
+        const auto id = identifier(road.at("roadId"));
+        const auto original = widths.find(id);
+        require(original != widths.end(), "visual road reference " + id);
+        require(road.value("sidewalkWidthM", 0.0) * 2 <= original->second * 0.4, "visual sidewalk width " + id);
+        widths.erase(original);
+        auto area = area_boundary(road.at("polygon"), bounds);
+        require(aoi.covers(area), "visual road outside AOI " + id);
+        occupied.push_back(std::move(area));
+    }
+    require(widths.empty(), "missing visual road polygons");
+    const auto index = index_areas(occupied);
+    for (const auto& surface : visual.at("surfaces")) {
+        const auto id = identifier(surface.at("id"));
+        require(ids.insert(id).second, "duplicate visual ID " + id);
+        const auto area = area_boundary(surface.at("polygon"), bounds);
+        require(land.covers(area), "visual surface outside land " + id);
+        index.query(area.bounds(), [&](auto i) {
+            require(!overlaps(area, occupied[i]), "visual surface covers a road or building " + id);
+        });
+    }
+    const std::string_view outside = city.at("boundaryMode") == "island" ? "island" : "cut";
+    std::vector<Segment> coast_segments;
+    for (const auto& coast : visual.at("coasts")) {
+        const auto id = identifier(coast.at("id"));
+        require(ids.insert(id).second, "duplicate visual ID " + id);
+        const auto path = points(coast.at("path"));
+        const auto kind = coast.at("kind").get<std::string>();
+        for (std::size_t i = 1; i < path.size(); ++i) {
+            const Segment line{path[i - 1], path[i]};
+            require(line.a != line.b, "zero-length coastal segment " + id);
+            std::vector<double> cuts;
+            land.cuts(line, cuts);
+            require(along_segment(line, std::move(cuts), [&](double x, double z) {
+                return land.side(x, z) == 0;
+            }), "coast outside land boundary " + id);
+            aoi.cuts(line, cuts = {});
+            const auto on_aoi = along_segment(line, std::move(cuts), [&](double x, double z) {
+                return aoi.side(x, z) == 0;
+            });
+            require(kind == (on_aoi ? outside : "shore"), "coastal kind differs from AOI boundary " + id);
+            coast_segments.push_back(line);
+        }
+    }
+    require(!coast_segments.empty(), "missing coastal boundaries");
+    const AreaBoundary coast(std::move(coast_segments));
+    for (auto line : land.edges()) {
+        std::vector<double> cuts;
+        coast.cuts(line, cuts);
+        require(along_segment(line, std::move(cuts), [&](double x, double z) {
+            return coast.side(x, z) == 0;
+        }), "incomplete coastal boundary");
+    }
 }
 
 }

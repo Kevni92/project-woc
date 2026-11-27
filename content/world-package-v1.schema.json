@@ -7,7 +7,7 @@
     "packageVersion": { "const": 1 },
     "worldId": { "$ref": "#/definitions/id" },
     "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "worldSchemaVersion": { "const": 2 },
+    "worldSchemaVersion": { "enum": [2, 3] },
     "worldRevision": { "$ref": "#/definitions/revision" },
     "visualRevision": { "$ref": "#/definitions/revision" },
     "themeRevision": { "$ref": "#/definitions/revision" },
@@ -68,19 +68,19 @@
     "smallSize": { "type": "integer", "minimum": 1, "maximum": 131072 },
     "worldFile": {
       "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
-      "properties": { "path": { "const": "world.json" }, "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+      "properties": { "path": { "const": "world.json" }, "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" }, "schemaVersion": { "enum": [2, 3] } }
     },
     "visualFile": {
       "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
-      "properties": { "path": { "const": "visual.json" }, "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+      "properties": { "path": { "const": "visual.json" }, "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" }, "schemaVersion": { "enum": [1, 2] } }
     },
     "themeFile": {
       "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
-      "properties": { "path": { "const": "theme.json" }, "bytes": { "$ref": "#/definitions/smallSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+      "properties": { "path": { "const": "theme.json" }, "bytes": { "$ref": "#/definitions/smallSize" }, "sha256": { "$ref": "#/definitions/hash" }, "schemaVersion": { "const": 1 } }
     },
     "provenanceFile": {
       "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
-      "properties": { "path": { "const": "provenance.json" }, "bytes": { "$ref": "#/definitions/smallSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+      "properties": { "path": { "const": "provenance.json" }, "bytes": { "$ref": "#/definitions/smallSize" }, "sha256": { "$ref": "#/definitions/hash" }, "schemaVersion": { "const": 1 } }
     }
   }
 }

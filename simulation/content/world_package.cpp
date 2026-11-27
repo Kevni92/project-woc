@@ -34,6 +34,19 @@ void verify_bytes(const PackageFile& file, std::string_view bytes) {
     }
 }
 
+Json validate_visual(const PackageManifest& manifest, std::string_view bytes) {
+    const auto& file = manifest.file(FileRole::visual);
+    verify_bytes(file, bytes);
+    static const Validator validator(Json::parse(schemas::visual));
+    static const Validator validator_v2(Json::parse(schemas::visual_v2));
+    const auto visual = validate_json(bytes, manifest.schema_version == 3 ? validator_v2 : validator, file.path);
+    if (visual.at("worldId") != manifest.world_id || visual.at("worldVersion") != manifest.schema_version
+        || visual.value("revision", 1u) != manifest.visual_revision) {
+        throw std::invalid_argument("WORLD_PACKAGE_IDENTITY_MISMATCH: visual.json");
+    }
+    return visual;
+}
+
 }
 
 PackageManifest parse_manifest(std::string_view bytes) {
@@ -53,8 +66,13 @@ PackageManifest parse_manifest(std::string_view bytes) {
     if (min_x >= max_x || min_z >= max_z) throw std::invalid_argument("WORLD_PACKAGE_BOUNDS: manifest.json");
 
     constexpr std::array keys{"world", "visual", "theme", "provenance"};
+    const std::array versions{manifest.schema_version, manifest.schema_version - 1, 1u, 1u};
     for (std::size_t index = 0; index < keys.size(); ++index) {
         const auto& file = document.at("files").at(keys[index]);
+        auto descriptor_version = file.value("schemaVersion", manifest.schema_version == 2 ? versions[index] : 0u);
+        if (descriptor_version != versions[index]) {
+            throw std::invalid_argument("WORLD_PACKAGE_SCHEMA: incompatible file version: " + file.at("path").get<std::string>());
+        }
         manifest.files[index] = {file.at("path"), file.at("bytes"), file.at("sha256")};
     }
     if (manifest.file(FileRole::world).sha256 != manifest.semantic_hash) {
@@ -63,33 +81,38 @@ PackageManifest parse_manifest(std::string_view bytes) {
     return manifest;
 }
 
-LoadedWorld load_world(const PackageManifest& manifest, std::string_view bytes) {
+LoadedWorld load_world(const PackageManifest& manifest, std::string_view bytes,
+                       std::optional<std::string_view> visual_bytes) {
     verify_bytes(manifest.file(FileRole::world), bytes);
-    try {
-        const auto document = validate_city_json(bytes);
-        if (document.at("id") != manifest.world_id || document.at("version") != manifest.schema_version
-            || document.at("name") != manifest.display_name || bounds_of(document.at("bounds")) != manifest.bounds) {
-            throw std::invalid_argument("manifest identity or bounds differ from world.json");
+    Json document;
+    auto definition = [&] {
+        try {
+            document = validate_city_json(bytes);
+            if (document.at("id") != manifest.world_id || document.at("version") != manifest.schema_version
+                || document.at("name") != manifest.display_name || bounds_of(document.at("bounds")) != manifest.bounds) {
+                throw std::invalid_argument("manifest identity or bounds differ from world.json");
+            }
+            return parse_city(document);
+        } catch (const std::exception& error) {
+            throw std::invalid_argument(std::string("WORLD_PACKAGE_INVALID_WORLD: ") + error.what());
         }
-        return {parse_city(document), manifest.revision, manifest.semantic_hash};
-    } catch (const std::exception& error) {
-        throw std::invalid_argument(std::string("WORLD_PACKAGE_INVALID_WORLD: ") + error.what());
+    }();
+    if (visual_bytes) {
+        const auto visual = validate_visual(manifest, *visual_bytes);
+        if (manifest.schema_version == 3) validate_visual_v2(document, visual);
     }
+    return {std::move(definition), manifest.revision, manifest.semantic_hash};
 }
 
 void validate_presentation_file(const PackageManifest& manifest, FileRole role, std::string_view bytes) {
+    if (role == FileRole::visual) {
+        validate_visual(manifest, bytes);
+        return;
+    }
     const auto& file = manifest.file(role);
     verify_bytes(file, bytes);
     switch (role) {
-    case FileRole::visual: {
-        static const Validator validator(Json::parse(schemas::visual));
-        const auto visual = validate_json(bytes, validator, file.path);
-        if (visual.at("worldId") != manifest.world_id || visual.at("worldVersion") != manifest.schema_version
-            || visual.value("revision", 1u) != manifest.visual_revision) {
-            throw std::invalid_argument("WORLD_PACKAGE_IDENTITY_MISMATCH: visual.json");
-        }
-        break;
-    }
+    case FileRole::visual: break;
     case FileRole::theme: {
         static const Validator validator(Json::parse(schemas::theme));
         validate_json(bytes, validator, file.path);

@@ -3,7 +3,9 @@
 namespace woc::content::schemas {
 inline constexpr auto package = R"schema(@package_schema@)schema";
 inline constexpr auto city = R"schema(@city_schema@)schema";
+inline constexpr auto city_v3 = R"schema(@city_v3_schema@)schema";
 inline constexpr auto visual = R"schema(@visual_schema@)schema";
+inline constexpr auto visual_v2 = R"schema(@visual_v2_schema@)schema";
 inline constexpr auto theme = R"schema(@theme_schema@)schema";
 inline constexpr auto provenance = R"schema(@provenance_schema@)schema";
 }

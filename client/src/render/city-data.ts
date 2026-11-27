@@ -1,5 +1,7 @@
 import Ajv from 'ajv';
 import schema from '../../../content/city-v2.schema.json';
+import schemaV3 from '../../../content/city-v3.schema.json';
+import { onMillimeterGrid, segmentBounds, SpatialIndex, validateArea, type Area, type Ring } from './area-geometry';
 import { isSimpleRing, segments } from './map-geometry';
 
 export type Point = readonly [x: number, z: number];
@@ -12,11 +14,11 @@ export interface Bounds {
   readonly maxZ: number;
 }
 
-export interface District {
+export interface District<Geometry = Ring> {
   readonly id: string;
   readonly name: string;
   readonly label: Point;
-  readonly outline: Polygon;
+  readonly outline: Geometry;
 }
 
 export interface Road {
@@ -26,11 +28,11 @@ export interface Road {
   readonly path: readonly Point[];
 }
 
-export interface Building {
+export interface Building<Geometry = Ring> {
   readonly id: string;
   readonly district: string;
   readonly height: number;
-  readonly footprint: Polygon;
+  readonly footprint: Geometry;
 }
 
 export interface Location {
@@ -61,30 +63,44 @@ interface Navigation {
   readonly ambientPatrol: readonly [string, string];
 }
 
-export interface City {
-  readonly version: 2;
+interface CityData<Geometry> {
   readonly id: string;
   readonly name: string;
   readonly bounds: Bounds;
   readonly start: Point;
-  readonly land: readonly Polygon[];
-  readonly districts: readonly District[];
-  readonly greens: readonly Polygon[];
+  readonly districts: readonly District<Geometry>[];
+  readonly greens: readonly Geometry[];
   readonly roads: readonly Road[];
-  readonly buildings: readonly Building[];
+  readonly buildings: readonly Building<Geometry>[];
   readonly locations: readonly Location[];
   readonly navigation: Navigation;
   readonly waterLabel: { readonly name: string; readonly position: Point };
 }
 
+export interface CityV2 extends CityData<Polygon> {
+  readonly version: 2;
+  readonly land: readonly Polygon[];
+}
+
+export interface CityV3 extends Omit<CityData<Area>, 'waterLabel'> {
+  readonly version: 3;
+  readonly land: Area;
+  readonly aoi: Area;
+  readonly boundaryMode: 'natural' | 'island';
+  readonly waterLabel?: CityV2['waterLabel'];
+}
+
+export type City = CityV2 | CityV3;
+
 const ajv = new Ajv();
-const matchesSchema = ajv.compile<City>(schema);
+const matchesSchema = ajv.compile<CityV2>(schema);
+const matchesSchemaV3 = ajv.compile<CityV3>(schemaV3);
 
 export function parseCity(value: unknown): City {
-  if (!matchesSchema(value)) {
-    throw new Error('Ungültiges Kartenformat. ' + ajv.errorsText(matchesSchema.errors));
-  }
-  const { bounds, land, greens, districts, roads, buildings, locations, start, waterLabel, navigation } = value;
+  if (!matchesSchema(value) && !matchesSchemaV3(value)) throw new Error('Ungültiges Kartenformat. '
+    + ajv.errorsText(typeof value === 'object' && value && 'version' in value && value.version === 3
+      ? matchesSchemaV3.errors : matchesSchema.errors));
+  const { bounds, districts, roads, buildings, locations, start, waterLabel, navigation } = value;
   if (bounds.minX >= bounds.maxX || bounds.minZ >= bounds.maxZ) {
     throw new Error('Ungültige Kartengrenzen.');
   }
@@ -94,10 +110,11 @@ export function parseCity(value: unknown): City {
   )];
   if (new Set(ids).size !== ids.length) throw new Error('Doppelte Karten-ID.');
 
-  const polygons = [...land, ...greens, ...districts.map(d => d.outline), ...buildings.map(b => b.footprint)];
+  const polygons = value.version === 2
+    ? [...value.land, ...value.greens, ...value.districts.map(d => d.outline), ...value.buildings.map(b => b.footprint)] : [];
   const points = [
     ...polygons.flat(), ...roads.flatMap(r => r.path),
-    ...districts.map(d => d.label), ...locations.map(l => l.position), start, waterLabel.position,
+    ...districts.map(d => d.label), ...locations.map(l => l.position), start, ...(waterLabel ? [waterLabel.position] : []),
     ...navigation.nodes.map(node => node.position), ...navigation.edges.flatMap(edge => edge.path),
   ];
   if (points.some(([x, z]) => x < bounds.minX || x > bounds.maxX || z < bounds.minZ || z > bounds.maxZ)) {
@@ -127,5 +144,64 @@ export function parseCity(value: unknown): City {
     throw new Error('Ungültige Wegenetzreferenz.');
   }
   for (const edge of navigation.edges) segments(edge.path, false);
+  if (value.version === 3) {
+    if (Object.values(bounds).some(coordinate => !onMillimeterGrid(coordinate))
+      || points.some(point => !point.every(onMillimeterGrid))) throw new Error('Kartenpunkt liegt nicht auf dem Millimeterraster.');
+    validateCityV3(value);
+  }
   return value;
+}
+
+function validateCityV3(city: CityV3) {
+  const { bounds, navigation } = city;
+  const aoi = validateArea(city.aoi, bounds);
+  const land = validateArea(city.land, bounds);
+  if (!aoi.covers(land)) throw new Error('Land außerhalb der AOI.');
+  const validateOnLand = (area: Area) => {
+    const boundary = validateArea(area, bounds);
+    if (!land.covers(boundary)) throw new Error('Fläche außerhalb des Landes.');
+    return boundary;
+  };
+  for (const green of city.greens) validateOnLand(green);
+  for (const district of city.districts) {
+    if (validateOnLand(district.outline).side(district.label) < 0) throw new Error('Viertellabel außerhalb des Viertels.');
+  }
+  if (city.locations.some(location => land.side(location.position) < 0)) throw new Error('Ort außerhalb des Landes.');
+  const buildings = new SpatialIndex(city.buildings.map(building => validateOnLand(building.footprint)), area => area.bounds);
+  for (const road of city.roads) {
+    if (segments(road.path, false).some(line => !aoi.coversLine(line))) throw new Error('Straße außerhalb der AOI.');
+  }
+
+  const adjacency = new Map(navigation.nodes.map(node => [node.id, [] as string[]]));
+  const positions = new Set(navigation.nodes.map(node => node.position.join('/')));
+  const ambient = navigation.spawns['ambient-01'];
+  if (positions.size !== navigation.nodes.length || new Set(city.locations.map(location => location.access)).size !== city.locations.length
+    || !('node' in ambient) || ambient.node !== navigation.ambientPatrol[0]) {
+    throw new Error('Ungültige Start-, Orts- oder Knotenposition.');
+  }
+  for (const edge of navigation.edges) {
+    let length = 0;
+    for (const segment of segments(edge.path, false)) {
+      const [[ax, az], [bx, bz]] = segment;
+      length += Math.round(Math.hypot(Math.round(bx * 1000) - Math.round(ax * 1000),
+        Math.round(bz * 1000) - Math.round(az * 1000)));
+      if (!land.coversLine(segment) || buildings.query(segmentBounds(segment))
+        .some(building => building.samples(segment).some(point => building.side(point) >= 0))) {
+        throw new Error('Blockierte Fußkante: ' + edge.id);
+      }
+    }
+    if (length !== edge.lengthMm) throw new Error('Ungültige Fußkantenlänge: ' + edge.id);
+    adjacency.get(edge.a)!.push(edge.b);
+    adjacency.get(edge.b)!.push(edge.a);
+  }
+  const queue = [navigation.start];
+  const reached = new Set(queue);
+  for (let i = 0; i < queue.length; i++) {
+    for (const id of adjacency.get(queue[i])!) {
+      if (reached.has(id)) continue;
+      reached.add(id);
+      queue.push(id);
+    }
+  }
+  if (queue.length !== adjacency.size) throw new Error('Getrennte Komponenten im Fußwegenetz.');
 }

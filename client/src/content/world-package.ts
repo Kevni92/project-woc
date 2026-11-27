@@ -19,7 +19,7 @@ interface Manifest extends WorldIdentity {
   readonly bounds: Bounds;
   readonly visualRevision: number;
   readonly modules?: readonly { role: string }[];
-  readonly files: Readonly<Record<typeof roles[number], { path: string; bytes: number; sha256: string }>>;
+  readonly files: Readonly<Record<typeof roles[number], { path: string; bytes: number; sha256: string; schemaVersion?: number }>>;
 }
 
 export interface WorldInit {
@@ -32,12 +32,13 @@ export interface WorldPackage {
   readonly city: City;
   readonly visuals: MapVisuals;
   readonly theme: MapTheme;
+  readonly osmAttribution?: boolean;
   readonly init: WorldInit;
 }
 
 const ajv = new Ajv();
 const matchesManifest = ajv.compile<Manifest>(packageSchema);
-const matchesProvenance = ajv.compile(provenanceSchema);
+const matchesProvenance = ajv.compile<{ method: string }>(provenanceSchema);
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 export function worldPackageUrl(query: URLSearchParams, appBase: URL): URL {
@@ -98,6 +99,14 @@ export async function loadWorldPackage(root: URL, fetchFile: typeof fetch = fetc
     throw new Error('WORLD_PACKAGE_SCHEMA: manifest.json: ' + ajv.errorsText(matchesManifest.errors));
   }
   if (manifest.modules?.length) throw new Error('WORLD_PACKAGE_UNSUPPORTED_MODULE: ' + manifest.modules[0].role);
+  const schemaVersions = [manifest.worldSchemaVersion, manifest.worldSchemaVersion - 1, 1, 1];
+  for (const [index, role] of roles.entries()) {
+    const descriptor = manifest.files[role];
+    const version = descriptor.schemaVersion ?? (manifest.worldSchemaVersion === 2 ? schemaVersions[index] : 0);
+    if (version !== schemaVersions[index]) {
+      throw new Error('WORLD_PACKAGE_SCHEMA: incompatible file version: ' + descriptor.path);
+    }
+  }
   if (manifest.semanticHash !== manifest.files.world.sha256) {
     throw new Error('WORLD_PACKAGE_HASH_MISMATCH: manifest semanticHash');
   }
@@ -117,10 +126,12 @@ export async function loadWorldPackage(root: URL, fetchFile: typeof fetch = fetc
   const theme = parseTheme(decode(themeBytes, 'theme.json'));
   const visuals = parseVisuals(decode(visualBytes, 'visual.json'), city, theme);
   if ((visuals.revision ?? 1) !== manifest.visualRevision) throw new Error('WORLD_PACKAGE_IDENTITY_MISMATCH: visual.json');
-  if (!matchesProvenance(decode(provenanceBytes, 'provenance.json'))) {
+  const provenance = decode(provenanceBytes, 'provenance.json');
+  if (!matchesProvenance(provenance)) {
     throw new Error('WORLD_PACKAGE_SCHEMA: provenance.json: ' + ajv.errorsText(matchesProvenance.errors));
   }
   const { worldId, worldSchemaVersion, worldRevision, semanticHash } = manifest;
   return { identity: { worldId, worldSchemaVersion, worldRevision, semanticHash }, city, visuals, theme,
+    osmAttribution: provenance.method === 'osm-pbf',
     init: { manifest: manifestBytes, world: worldBytes } };
 }
