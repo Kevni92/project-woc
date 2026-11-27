@@ -2,7 +2,7 @@
 Status: VORGABE für gemeinsamen C++-Kern mit WASM/native Hosts, asynchronen Transportvertrag und logische Mehrclientfähigkeit. P0-002 setzt diesen Pfad mit einer kleinen Testwelt um. Die darüber hinausgehenden Architekturdetails bleiben ENTWURF.
 
 ## Architekturziel
-Eine einzige autoritative Spielsimulation in portablem C++23. Der gleiche Core und Application Layer werden für native Programme und das Emscripten-Modul als statische Bibliotheken gebaut. Der TypeScript-Client verwaltet die lesende Projektion. UI und ViewModels verwenden `SimulationClient`. Die geplante Karte verwendet dieselbe Schnittstelle.
+Eine einzige autoritative Spielsimulation in portablem C++23. Der gleiche Core und Application Layer werden für native Programme und das Emscripten-Modul als statische Bibliotheken gebaut. Der TypeScript-Client verwaltet die lesende Projektion. Stadtkarte und Debugger verwenden `SimulationClient`.
 
 Browser: Svelte/Three.js → SimulationClient → WasmTransport → dedizierter Web Worker (postMessage) → schmale WASM-Bridge → SimulationHost → Core.
 Server: Svelte/Three.js → SimulationClient → WebSocketTransport → nativer WebSocket-Host → SimulationHost → Core.
@@ -22,8 +22,10 @@ Die Ninja-Presets `native` und `wasm` verwenden getrennte Build-Verzeichnisse. `
 | `simulation/hosts/native/`, `simulation/hosts/wasm/` | CLI-Frames, Loopback-WebSocket, Takt beziehungsweise C-ABI |
 | `protocol/` | Sprachneutrale JSON-Schemas und gemeinsame Vertragsfixture |
 | `client/src/simulation/` | Transportadapter, Worker, SimulationClient und Projektion |
-| `client/src/ui/` | Zwei Debug-Panels auf demselben Simulationshost |
-| `tests/`, `client/tests/` | Native Tests, Client-Tests, Vertragsparität und Browser-Smoke |
+| `content/` | Versionierte statische Kartendaten und v1-JSON-Schema |
+| `client/src/render/` | Kartenvalidierung, Three.js-Geografie, Kamera, Palette und Projektion auf den Bildschirm |
+| `client/src/ui/` | Stadtkarte mit HTML-Markern und Details sowie zwei Debug-Panels auf demselben Simulationshost |
+| `tests/`, `client/tests/` | Native Tests, Client-/Kartentests, Vertragsparität und Browser-Smoke |
 
 ## Domänenkern und Ereignisse
 
@@ -39,5 +41,8 @@ In P0-002 bleiben die zwei Bewohner samt Geld und Position im Speicher des laufe
 
 WorldState enthält Bewohner auch ohne Client; Session-/Kontrollrechte sind keine Charakteridentität. Save serialisiert versionierten Zustand, Clock, RNG, Scheduler, laufende Aktionen, Weltdefinitionsversion; keine Socket-/Worker-Handles oder aktiven Client-Leases. Beim Laden ohne Session bleiben Charaktere autonom bzw. durch definierte Recovery-Regel konsistent. Browserhost schreibt über IndexedDB, nativer Host zunächst Datei/StorageAdapter; Core führt kein Dateisystem-I/O aus. Host-seitig autoritative Validierung, Sessionbindung und gezielte Projektion auch im lokalen Betrieb. Remote zusätzlich TLS, Authentifizierung, Autorisierung, Limits, Reconnect und Interest Management vor öffentlicher Freigabe. Lokales WASM ist vom Nutzer manipulierbar; keine ungeprüfte Übernahme lokaler Spielstände in kompetitive Serverwelten.
 
-## Migration von der ersten Architektur
-P0-002 liefert echte Hosts für den im Karten-Task vorgesehenen Client-Vertrag. P0-001 verwendet die bestehenden Hosts im regulären Kartenbetrieb direkt. MockTransport ist nur für isolierte Tests zulässig. Eine statische gemeinsame Kartendefinition liegt geplant unter content/; echte Marker, Steuerrechte und Zeit stammen aus SimulationClient. Routing und autoritative Ortsvalidierung folgen P1. Siehe [Protokoll](protocol.md), [Charaktere](../design/characters.md), [Roadmap](../roadmap.md).
+## Kartenpfad
+
+`content/breakwater.json` liefert statische Geografie für die Welt `p0-test-world` in lokalen Metern. Der Renderer nutzt dieselben x/z-Koordinaten wie die öffentlichen Charakterpositionen, y ist die Höhe. Beide Transportmodi laden dieselbe gebündelte Kartendefinition. P1 kann diese Geografie für Routing und autoritative Ortsvalidierung in den Core einbinden.
+
+`MapViewport` reicht lesende Marker, Auswahl und Spielminuten an den Renderer. Die orthografische Kamera bewegt sich in einer Szene. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Statische Geometrien werden einmal pro Mount aufgebaut. Orts- und Charaktermarker bleiben als HTML-Schaltflächen per Tastatur bedienbar. Bei dichter Lage halten Führungslinien ihre Verbindung zur projizierten Position. `MapView` nimmt Befehle entgegen und zeigt Steuerrechte und privates Bargeld erst aus der autoritativen Projektion an. Bei einer Resynchronisierung blendet sie die Live-Marker bis zum Snapshot aus. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu.

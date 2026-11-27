@@ -2,7 +2,7 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand:** P0-002 ist als ausführbarer Dual-Runtime-Prototyp umgesetzt. Der Debug-Client läuft lokal mit WebAssembly im Browser oder mit einem nativen Loopback-WebSocket-Host. Die interaktive Karte ist in P0-001 geplant.
+**Stand.** Breakwater ist die interaktive Stadtkarte aus P0-001. Karte und Simulations-Debugger verwenden denselben C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
 
 ## Lokal bauen und starten
 
@@ -37,10 +37,12 @@ npm --prefix client ci
 npm --prefix client run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-- **WASM** über [127.0.0.1:5173](http://127.0.0.1:5173/). Beide Panels teilen sich einen dedizierten Worker. Jedes Panel meldet sich separat an.
+- **WASM** über [127.0.0.1:5173](http://127.0.0.1:5173/). Stadtkarte und Debugger teilen sich den dedizierten Worker.
 - **WebSocket** über [127.0.0.1:5173/?transport=ws](http://127.0.0.1:5173/?transport=ws). In einem zweiten Terminal aus der Repository-Wurzel `build\native\woc_server.exe` (Windows) oder `./build/native/woc_server` (Linux/macOS) starten. Standardadresse ist `ws://127.0.0.1:8765`. Für einen anderen Port `woc_server --port PORT` verwenden und die WebSocket-Adresse als URL-kodierten Parameter `ws` übergeben.
 
-In beiden Panels auf **Verbinden** klicken. Jeweils eine Figur übernehmen oder mit beiden Panels um Ada konkurrieren. Die Testaktion ändert Position und persönliches Bargeld. **Snapshot anfordern** lädt die Projektion neu.
+Die Karte verbindet beim ersten Öffnen automatisch. Ziehen und Pfeiltasten verschieben den Ausschnitt. Mausrad, Zwei-Finger-Geste oder Plus/Minus zoomen. Die Fokustaste zentriert den eigenen Charakter oder den Startbereich. Die Übersichtstaste oder Pos1 setzt den Ausschnitt zurück. Orte und Charaktere lassen sich auf der Karte oder in der Seitenleiste auswählen. Ein Klick auf ein Gebäude zeigt Viertel und Höhe. Die Karte benötigt WebGL 2. [Three.js-Dokumentation](https://threejs.org/docs/pages/WebGLRenderer.html)
+
+**Debugger** öffnet `?view=debug` mit derselben Transportkonfiguration. Client A teilt seine Session mit der Stadtkarte. Bei direktem Debugger-Aufruf startet jede Session über **Verbinden**. Mit **Testaktion** ändern sich Position und eigenes Bargeld auf dem Host. **Zur Stadtkarte** zeigt die neue Position. **Snapshot anfordern** lädt die Projektion neu.
 
 ## Vertragstests und Browser-Smoke
 
@@ -54,7 +56,7 @@ npm --prefix client exec -- playwright install chromium
 npm --prefix client run test:e2e
 ```
 
-Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die gemeinsame Fixture und die tatsächlich geprüften Versionen stehen in [P0-002](tasks/P0-002-dual-runtime.md).
+Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die gemeinsame Fixture steht in [P0-002](tasks/P0-002-dual-runtime.md). Die Prüfungen der Stadtkarte sind in [P0-001](tasks/P0-001-map-prototype.md) dokumentiert.
 
 ## Dokumentation
 | Datei | Zweck |

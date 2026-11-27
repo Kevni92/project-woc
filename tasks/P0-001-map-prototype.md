@@ -1,5 +1,5 @@
 # P0-001 — Interaktive Stadtkarte
-Status: geplant. P0-002 ist bereits umgesetzt und bildet die Grundlage.
+Status: erledigt, geprüft am 2026-11-27. P0-002 bildet die Grundlage.
 Abhängigkeiten: [P0-002](P0-002-dual-runtime.md), [Welt](../docs/design/world.md), [Architektur](../docs/architecture/overview.md).
 
 ## Ziel
@@ -19,14 +19,31 @@ Eine minimale, aber visuell stimmige interaktive Stadtkarte als Hauptansicht des
 Echte Wegfindung/Reisen, Fahrzeuglogik, NPC-Tagespläne, Missionen, Inventar, Persistenz, Accounts, Karteneditor, externe Geodaten, Netcode-Umbau, große zusätzliche Frameworks. MockTransport nur für isolierte Tests, nicht für die reguläre Karte.
 
 ## Akzeptanzkriterien
-- [ ] Bestehende native/WASM-Hosts und dieselbe Browser-Kartenansicht starten lokal; lediglich Transportkonfiguration unterscheidet die Modi.
-- [ ] Land, Wasser, Straßen, Gebäude, sechs POIs und reale Charaktermarker sichtbar; IDs und Weltkoordinaten konsistent.
-- [ ] Nahansicht mit Extrusionen, Fernansicht flach; Fokus bleibt erhalten, keine zweite Welt/Szene, Pan/Zoom/Reset/Resize funktionieren.
-- [ ] Auswahl zeigt korrekte Details; Übernahme/Freigabe sichtbar aus Hostzustand, Passant nicht übernehmbar; Demo-Testaktion/Passantenweg aktualisiert echte Marker, kein Client-seitiges Vortäuschen.
-- [ ] Vorhandene Uhr treibt Palette; kein selbstständiger Client-Tick. Disconnect/Resync führt nicht zu falscher Kontrolle oder veralteten Markern.
-- [ ] Alte Debug-Ansicht und Vertrags-/Lease-/Delta-Tests bleiben funktionsfähig.
-- [ ] Unit-Tests für Karten-/Zoom-/Zeitpalette und Projektionslogik; Browser-Smoketest für Karte, Auswahl, Zoom und echte Positions-/Kontrollupdates über beide Transporte. Native/WASM-Builds, Typecheck, Vite-Build und Tests tatsächlich prüfen. Ergebnisse inkl. Einschränkungen dokumentieren.
-- [ ] README, Architektur, Roadmap und dieser Task aktualisiert; kleine nachvollziehbare Commits.
+- [x] Bestehende native/WASM-Hosts und dieselbe Browser-Kartenansicht starten lokal; lediglich Transportkonfiguration unterscheidet die Modi.
+- [x] Land, Wasser, Straßen, Gebäude, sechs POIs und reale Charaktermarker sichtbar; IDs und Weltkoordinaten konsistent.
+- [x] Nahansicht mit Extrusionen, Fernansicht flach; Fokus bleibt erhalten, keine zweite Welt/Szene, Pan/Zoom/Reset/Resize funktionieren.
+- [x] Auswahl zeigt korrekte Details; Übernahme/Freigabe sichtbar aus Hostzustand, Passant nicht übernehmbar; Demo-Testaktion/Passantenweg aktualisiert echte Marker, kein Client-seitiges Vortäuschen.
+- [x] Vorhandene Uhr treibt Palette; kein selbstständiger Client-Tick. Disconnect/Resync führt nicht zu falscher Kontrolle oder veralteten Markern.
+- [x] Alte Debug-Ansicht und Vertrags-/Lease-/Delta-Tests bleiben funktionsfähig.
+- [x] Unit-Tests für Karten-/Zoom-/Zeitpalette und Projektionslogik; Browser-Smoketest für Karte, Auswahl, Zoom und echte Positions-/Kontrollupdates über beide Transporte. Native/WASM-Builds, Typecheck, Vite-Build und Tests tatsächlich prüfen. Ergebnisse inkl. Einschränkungen dokumentieren.
+- [x] README, Architektur, Roadmap und dieser Task aktualisiert; kleine nachvollziehbare Commits.
 
 ## Ergebnis
-Ausstehend. P0-001 ist ein Präsentationsschnitt auf vorhandenem Core, keine neue RPG-Simulation. Weltgestaltung, Stil und Schwellenwerte sind vorläufige Entwürfe.
+[Breakwater](../content/breakwater.json) enthält drei Viertel, 40 Gebäude und sechs benannte Orte. Das [Schema](../content/city-v1.schema.json) definiert das Dateiformat. Der Client prüft außerdem IDs, Referenzen, Koordinatengrenzen und degenerierte Geometrie. Der Startbereich um x=0 m und z=0 m hält die bestehenden Host-Koordinaten für Ada, Ben und den Passanten frei.
+
+Der Kartenrenderer verwendet eine orthografische Three.js-Szene. Bei 650 sichtbaren vertikalen Metern beginnt der Übergang von der flachen Übersicht zur geneigten Ansicht. Bei 135 Metern ist die volle Neigung und Gebäudehöhe erreicht. Der Kartenfokus liegt bei 76 Metern. Der Mauszeiger bleibt beim Zoom auf demselben Punkt der Bodenebene. HTML-Marker behalten bei Überlappungen ihren projizierten Anker und verschieben nur die anklickbare Schaltfläche. Beim Ansichtswechsel gibt die Karte Renderer-Ressourcen und ihr Abonnement frei. Client A bleibt als gemeinsame Session von Karte und Debugger bestehen.
+
+Breakwater, Farbpalette und Zoomschwellen sind Prototypwerte. Die gebündelte Geografie dient der Darstellung. P1 kann sie im Core für Routing und Ortsvalidierung verfügbar machen.
+
+### Ausgeführte Prüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| CMake `native` und `wasm` | Beide Builds mit `--clean-first` erfolgreich auf Windows x64 mit Visual Studio Build Tools 2022 und Emscripten 4.0.23 |
+| CTest | 1 von 1 bestanden |
+| `npm ci` und Typecheck | Erfolgreich. Typecheck mit 0 Fehlern und 0 Warnungen |
+| Vitest | 9 von 9 bestanden. Dazu zählen Kartendaten, Kamera, Markerlayout, Zeitpalette und Sichtbarkeit der Projektion bei Resync und Disconnect |
+| Vite-Produktionsbuild | Erfolgreich. Das separat geladene Kartenmodul mit Three.js ist rund 603 kB minifiziert beziehungsweise 154 kB gzip. Vite meldet die Überschreitung der standardmäßigen 500-kB-Chunkgrenze |
+| Playwright Chromium | 10 Fälle zweimal ausgeführt, 20 von 20 bestanden. Karten-Smokes mit dem laufenden WASM- und WebSocket-Host, Resize/Tastatur bei schmalem Viewport und alle sieben P0-002-Fälle |
+
+Geprüft mit Node.js 26.0.0, npm 11.12.1, Three.js und `@types/three` 0.187.0, Playwright 1.65.1 und Chromium 159.0.8154.6. Die Karte benötigt WebGL 2. Beim zusätzlichen Bildvergleich bei 1.440 × 960 Pixeln waren die Three.js-Canvas-Aufnahmen beider Transporte in der Übersicht und der Nahansicht pixelgleich. Das Layout wurde auch bei 375 Pixeln visuell geprüft.

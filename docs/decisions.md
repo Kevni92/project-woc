@@ -21,6 +21,7 @@
 | D017 | ENTWURF | Identischer asynchroner versionierter Nachrichtenvertrag, Snapshots/Deltas, semantische Paritätstests |
 | D018 | IMPLEMENTIERT | P0-002, 2026-11-27. C++23 mit CMake und Emscripten aus derselben Codebasis. Nativer Loopback-Host mit Boost.Asio/Beast, Worker mit schmaler C-ABI und gemeinsame v1-JSON-Nachrichten mit nlohmann/json. Debug-Client in TypeScript, Svelte 5 und Vite. Umgesetzter Teilumfang von D005, D014 und D017. |
 | D019 | IMPLEMENTIERT | P0-002, 2026-11-27. Eine exklusive Lease pro Session und Charakter, atomarer Wechsel und sofortige Freigabe mit Zustandskontinuität im laufenden Host. Unter den drei Testfiguren sind zwei übernehmbare Bewohner und ein Ambient-Passant. Prototypischer Teilumfang von D015 und D016. |
+| D020 | IMPLEMENTIERT | P0-001, 2026-11-27. Breakwater verwendet eine gemeinsame versionierte JSON-Kartendefinition in lokalen x/z-Metern. Three.js rendert die Geografie in einer orthografischen Szene mit kontinuierlichem Übergang zwischen Top-down und geneigter Nahansicht. HTML-Marker, Steuerrechte und Tag-/Nachtpalette folgen der bestehenden SimulationClient-Projektion in beiden Transportmodi. Breakwater und die Zoomschwellen sind Prototypwerte. |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?
