@@ -1,0 +1,383 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:woc:server:v1",
+  "definitions": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "z"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "z": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "eligible",
+        "occupied",
+        "position"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "occupied": {
+          "type": "boolean"
+        },
+        "position": {
+          "$ref": "#/definitions/position"
+        }
+      }
+    },
+    "controlled": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "cash"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "cash": {
+              "$ref": "#/definitions/count"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "type",
+        "streamSeq",
+        "worldTick",
+        "payload",
+        "requestId"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "const": 1
+        },
+        "type": {
+          "const": "Welcome"
+        },
+        "streamSeq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "worldTick": {
+          "$ref": "#/definitions/count"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sessionId",
+            "worldId",
+            "capabilities"
+          ],
+          "properties": {
+            "sessionId": {
+              "$ref": "#/definitions/id"
+            },
+            "worldId": {
+              "$ref": "#/definitions/id"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/id"
+              }
+            }
+          }
+        },
+        "requestId": {
+          "$ref": "#/definitions/id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "type",
+        "streamSeq",
+        "worldTick",
+        "payload"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "const": 1
+        },
+        "type": {
+          "const": "Snapshot"
+        },
+        "streamSeq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "worldTick": {
+          "$ref": "#/definitions/count"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "revision",
+            "gameMinutes",
+            "characters",
+            "controlled"
+          ],
+          "properties": {
+            "revision": {
+              "$ref": "#/definitions/count"
+            },
+            "gameMinutes": {
+              "$ref": "#/definitions/count"
+            },
+            "characters": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/summary"
+              }
+            },
+            "controlled": {
+              "$ref": "#/definitions/controlled"
+            }
+          }
+        },
+        "requestId": {
+          "$ref": "#/definitions/id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "type",
+        "streamSeq",
+        "worldTick",
+        "payload"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "const": 1
+        },
+        "type": {
+          "const": "Delta"
+        },
+        "streamSeq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "worldTick": {
+          "$ref": "#/definitions/count"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "revision",
+            "gameMinutes",
+            "characters",
+            "controlled",
+            "baseRevision"
+          ],
+          "properties": {
+            "revision": {
+              "$ref": "#/definitions/count"
+            },
+            "gameMinutes": {
+              "$ref": "#/definitions/count"
+            },
+            "characters": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/summary"
+              }
+            },
+            "controlled": {
+              "$ref": "#/definitions/controlled"
+            },
+            "baseRevision": {
+              "$ref": "#/definitions/count"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "type",
+        "streamSeq",
+        "worldTick",
+        "payload",
+        "requestId"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "const": 1
+        },
+        "type": {
+          "const": "CommandResult"
+        },
+        "streamSeq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "worldTick": {
+          "$ref": "#/definitions/count"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "accepted",
+                "revision"
+              ],
+              "properties": {
+                "accepted": {
+                  "const": true
+                },
+                "revision": {
+                  "$ref": "#/definitions/count"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "accepted",
+                "revision",
+                "code"
+              ],
+              "properties": {
+                "accepted": {
+                  "const": false
+                },
+                "revision": {
+                  "$ref": "#/definitions/count"
+                },
+                "code": {
+                  "enum": [
+                    "CHARACTER_NOT_FOUND",
+                    "NOT_ELIGIBLE",
+                    "CHARACTER_BUSY",
+                    "NOT_CONTROLLER",
+                    "INVALID_ACTION"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "requestId": {
+          "$ref": "#/definitions/id"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "type",
+        "streamSeq",
+        "worldTick",
+        "payload"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "const": 1
+        },
+        "type": {
+          "const": "Error"
+        },
+        "streamSeq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "worldTick": {
+          "$ref": "#/definitions/count"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "code": {
+              "enum": [
+                "INVALID_MESSAGE",
+                "UNSUPPORTED_VERSION",
+                "ALREADY_CONNECTED",
+                "HELLO_REQUIRED",
+                "UNKNOWN_COMMAND",
+                "REQUEST_ID_REUSED"
+              ]
+            }
+          }
+        },
+        "requestId": {
+          "$ref": "#/definitions/id"
+        }
+      }
+    }
+  ]
+}

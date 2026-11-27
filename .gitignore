@@ -1,0 +1,8 @@
+/build/
+/CMakeUserPresets.json
+/client/node_modules/
+/client/dist/
+/client/playwright-report/
+/client/test-results/
+/client/src/generated/*.mjs
+/client/src/generated/*.wasm
