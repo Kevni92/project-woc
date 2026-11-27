@@ -1,0 +1,4 @@
+# P1-007 — Lokaler visueller World Studio Editor
+Status: geplant; nach P1-006 konkretisieren.
+Ziel: getrennte lokale Svelte/MapLibre/Terra Draw-App mit Python-Jobbackend und gemeinsamem CLI-Importer, Kartenstil/Provider konfigurierbar.
+Abnahme: Rechteck ziehen, metrisch 5×5 km einstellen, Freihand links ziehen/schließen, editieren/löschen, korrekte Flächen-/BBox-Anzeige, Natural/Island und Padding/Seed/Quelle wählen, AOI/Config speichern/laden, Fortschritt/Cancel/Fehler, Vorschau Layer/Graph/Qualitätsbericht, validiertes Paket lokal exportieren und ohne Neubuild im Spiel laden. Koordinatensuche ohne externen Geocoder; optional zulässigen Provider konfigurieren. Offline Browser-E2E mit Fixture, reale Region manuell testen, beide Hosts, Sicherheitsgrenzen localhost/Exportpfad/kein Game-Bundle. Keine öffentliche Bereitstellung und kein verpflichtender Cloud-Dienst. Ergebnis ausstehend.

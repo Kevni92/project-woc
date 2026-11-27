@@ -46,3 +46,6 @@ Straßen, Flächen und Gebäude verwenden gemeinsame Materialien und Geometriegr
 - MapLibre Style Specification: https://maplibre.org/maplibre-style-spec/ und https://maplibre.org/maplibre-style-spec/layers/ — Datenquelle und Style-Layer getrennt; Fill, Line, Symbol, Extrusion und Zoomregeln. Wir übernehmen das Prinzip, nicht zwingend die Bibliothek.
 - OpenStreetMap Simple 3D Buildings: https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings — Footprint, Höhe, Geschosse, Dachformen als abstrakte Daten; Inspiration für eigenes lokales Schema, kein OSM-Import.
 - Three.js: https://threejs.org/docs/pages/OrbitControls.html, https://threejs.org/docs/pages/InstancedMesh.html, https://threejs.org/docs/ — vorhandene orthografische Kamera und Geometrien bleiben geeignet; OrbitControls als Referenz, vorhandene MapCamera gezielt erweitern.
+
+## Geplanter Runtime-Paketvertrag
+Die aktuelle fest gebündelte Welt soll durch [World Packages](world-package.md) ersetzt werden; [World Studio](../design/world-studio.md) exportiert in dieses Format. Die bestehenden Schemafamilien bleiben Grundlage. Die obigen Implementierungsangaben beschreiben weiterhin P1-004, nicht bereits implementierte Runtime-Loader.

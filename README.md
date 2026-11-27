@@ -86,5 +86,10 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P1-004](tasks/P1-004-map-visual-upgrade.md) | Fullscreen-Karte, Visualformat und kartografische Details |
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
+| [World Package](docs/architecture/world-package.md) | Laufzeitladbare Kartenpakete (geplant) |
+| [World Studio](docs/design/world-studio.md) | Lokaler Geodateneditor und Import (geplant) |
+| [P1-005](tasks/P1-005-world-package-loader.md) | Kartenloader (nächster Task) |
+| [P1-006](tasks/P1-006-osm-world-importer.md) | OSM-Importer |
+| [P1-007](tasks/P1-007-world-studio.md) | Visueller Karteneditor |
 
 Starte eine KI-Sitzung mit dem Repository-Link und der Anweisung, AGENTS.md zu lesen.
