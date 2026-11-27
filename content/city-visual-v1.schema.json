@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["visualVersion", "worldId", "worldVersion", "buildings", "roads", "surfaces", "coasts", "decorations"],
+  "properties": {
+    "visualVersion": { "const": 1 },
+    "worldId": { "$ref": "#/definitions/id" },
+    "worldVersion": { "type": "integer", "minimum": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["buildingId", "profile"],
+        "properties": {
+          "buildingId": { "$ref": "#/definitions/id" },
+          "profile": { "enum": ["residential", "commercial", "warehouse"] },
+          "roof": { "enum": ["flat", "gabled"] },
+          "roofHeightM": { "type": "number", "exclusiveMinimum": 0 },
+          "windows": { "enum": ["none", "subtle", "bands"] }
+        }
+      }
+    },
+    "roads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["roadId", "profile"],
+        "properties": {
+          "roadId": { "$ref": "#/definitions/id" },
+          "profile": { "enum": ["main", "local"] },
+          "markings": { "enum": ["none", "center"] },
+          "sidewalkWidthM": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "polygon"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "kind": { "enum": ["parcel", "grass", "plaza", "promenade", "beach"] },
+          "polygon": { "$ref": "#/definitions/ring" }
+        }
+      }
+    },
+    "coasts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "path": { "type": "array", "minItems": 2, "items": { "$ref": "#/definitions/point" } }
+        }
+      }
+    },
+    "decorations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "polygon", "elevationM"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "kind": { "const": "pier" },
+          "polygon": { "$ref": "#/definitions/ring" },
+          "elevationM": { "type": "number", "minimum": 0.75, "maximum": 15 }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "point": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+    "ring": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "$ref": "#/definitions/point" } }
+  }
+}

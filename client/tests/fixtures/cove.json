@@ -1,0 +1,50 @@
+{
+  "world": {
+    "version": 2,
+    "id": "cove",
+    "name": "Cove",
+    "bounds": { "minX": 0, "minZ": 0, "maxX": 120, "maxZ": 100 },
+    "start": [25, 30],
+    "land": [[[0, 0], [60, 0], [60, 100], [0, 100]]],
+    "districts": [{
+      "id": "cove-center",
+      "name": "Center",
+      "label": [20, 20],
+      "outline": [[0, 0], [55, 0], [55, 90], [0, 90]]
+    }],
+    "greens": [],
+    "roads": [{ "id": "main-lane", "kind": "street", "width": 8, "path": [[15, 30], [50, 30]] }],
+    "buildings": [{ "id": "clubhouse", "district": "cove-center", "height": 7, "footprint": [[6, 40], [20, 40], [20, 48], [6, 48]] }],
+    "locations": [{
+      "id": "meeting-point",
+      "name": "Meeting Point",
+      "type": "plaza",
+      "district": "cove-center",
+      "position": [45, 30],
+      "access": "path-end",
+      "description": "Small meeting spot on the lane."
+    }],
+    "navigation": {
+      "start": "path-start",
+      "nodes": [{ "id": "path-start", "position": [25, 30] }, { "id": "path-end", "position": [45, 30] }],
+      "edges": [{ "id": "lane-walk", "a": "path-start", "b": "path-end", "mode": "foot", "lengthMm": 20000, "path": [[25, 30], [45, 30]] }],
+      "spawns": {
+        "resident-ada": { "node": "path-start" },
+        "resident-ben": { "node": "path-end" },
+        "ambient-01": { "edge": "lane-walk", "offsetMm": 3000 }
+      },
+      "ambientPatrol": ["path-start", "path-end"]
+    },
+    "waterLabel": { "name": "Cove Sound", "position": [80, 50] }
+  },
+  "visuals": {
+    "visualVersion": 1,
+    "worldId": "cove",
+    "worldVersion": 2,
+    "buildings": [{ "buildingId": "clubhouse", "profile": "residential", "roofHeightM": 2 }],
+    "roads": [{ "roadId": "main-lane", "profile": "main", "sidewalkWidthM": 1 }],
+    "surfaces": [{ "id": "cove-sands", "kind": "beach", "polygon": [[46, 50], [60, 45], [60, 75], [52, 77]] }],
+    "coasts": [{ "id": "east-coast", "path": [[60, 0], [60, 100]] }],
+    "decorations": [{ "id": "small-pier", "kind": "pier", "polygon": [[56, 62], [86, 62], [87, 71], [56, 70]], "elevationM": 1.5 }]
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["themeVersion", "id", "day", "night", "lod", "water", "roads", "buildings", "layerStepM"],
+  "properties": {
+    "themeVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "day": { "$ref": "#/definitions/palette" },
+    "night": { "$ref": "#/definitions/palette" },
+    "layerStepM": { "type": "number", "minimum": 0.01, "maximum": 0.045 },
+    "lod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flatSpanM", "fullHeightSpanM", "facadeSpanM", "markingsSpanM"],
+      "properties": {
+        "flatSpanM": { "type": "number", "minimum": 100, "maximum": 2000 },
+        "fullHeightSpanM": { "type": "number", "minimum": 30, "maximum": 1000 },
+        "facadeSpanM": { "type": "number", "minimum": 20, "maximum": 500 },
+        "markingsSpanM": { "type": "number", "minimum": 20, "maximum": 1500 }
+      }
+    },
+    "water": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolution", "distanceM"],
+      "properties": {
+        "resolution": { "enum": [256, 512, 1024] },
+        "distanceM": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "minimum": 1, "maximum": 2000 } }
+      }
+    },
+    "roads": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["edgeFraction", "markingFraction", "dashLengthM", "dashGapM"],
+      "properties": {
+        "edgeFraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.15 },
+        "markingFraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.1 },
+        "dashLengthM": { "type": "number", "minimum": 1, "maximum": 40 },
+        "dashGapM": { "type": "number", "minimum": 1, "maximum": 40 }
+      }
+    },
+    "buildings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["residential", "commercial", "warehouse"],
+      "properties": {
+        "residential": { "$ref": "#/definitions/profile" },
+        "commercial": { "$ref": "#/definitions/profile" },
+        "warehouse": { "$ref": "#/definitions/profile" }
+      }
+    }
+  },
+  "definitions": {
+    "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roof", "roofFraction", "flatDetail", "trimHeightM", "windows", "floorHeightM", "windowSpacingM"],
+      "properties": {
+        "roof": { "enum": ["flat", "gabled"] },
+        "roofFraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.45 },
+        "flatDetail": { "enum": ["none", "parapet", "raised"] },
+        "trimHeightM": { "type": "number", "minimum": 0, "maximum": 4 },
+        "windows": { "enum": ["none", "subtle", "bands"] },
+        "floorHeightM": { "type": "number", "minimum": 2, "maximum": 12 },
+        "windowSpacingM": { "type": "number", "minimum": 2, "maximum": 20 }
+      }
+    },
+    "palette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "waterShallow", "waterMid", "waterDeep", "waterHorizon", "land", "district", "parcel", "beach", "plaza", "grass",
+        "promenade", "roadEdge", "roadMain", "roadLocal", "marking", "roofResidential", "roofCommercial", "roofWarehouse",
+        "wall", "roofTrim", "window", "pier", "pierSupport", "selected", "label", "route"
+      ],
+      "properties": {
+        "waterShallow": { "$ref": "#/definitions/color" },
+        "waterMid": { "$ref": "#/definitions/color" },
+        "waterDeep": { "$ref": "#/definitions/color" },
+        "waterHorizon": { "$ref": "#/definitions/color" },
+        "land": { "$ref": "#/definitions/color" },
+        "district": { "$ref": "#/definitions/color" },
+        "parcel": { "$ref": "#/definitions/color" },
+        "beach": { "$ref": "#/definitions/color" },
+        "plaza": { "$ref": "#/definitions/color" },
+        "grass": { "$ref": "#/definitions/color" },
+        "promenade": { "$ref": "#/definitions/color" },
+        "roadEdge": { "$ref": "#/definitions/color" },
+        "roadMain": { "$ref": "#/definitions/color" },
+        "roadLocal": { "$ref": "#/definitions/color" },
+        "marking": { "$ref": "#/definitions/color" },
+        "roofResidential": { "$ref": "#/definitions/color" },
+        "roofCommercial": { "$ref": "#/definitions/color" },
+        "roofWarehouse": { "$ref": "#/definitions/color" },
+        "wall": { "$ref": "#/definitions/color" },
+        "roofTrim": { "$ref": "#/definitions/color" },
+        "window": { "$ref": "#/definitions/color" },
+        "pier": { "$ref": "#/definitions/color" },
+        "pierSupport": { "$ref": "#/definitions/color" },
+        "selected": { "$ref": "#/definitions/color" },
+        "label": { "$ref": "#/definitions/color" },
+        "route": { "$ref": "#/definitions/color" }
+      }
+    }
+  }
+}

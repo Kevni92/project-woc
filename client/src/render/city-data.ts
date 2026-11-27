@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 import definition from '../../../content/breakwater.json';
 import schema from '../../../content/city-v2.schema.json';
+import { segments } from './map-geometry';
 
 export type Point = readonly [x: number, z: number];
 type Polygon = readonly Point[];
@@ -130,14 +131,6 @@ export function parseCity(value: unknown): City {
   }
   for (const edge of navigation.edges) segments(edge.path, false);
   return value;
-}
-
-export function segments(points: readonly Point[], closed: boolean): [Point, Point][] {
-  return points.slice(0, closed ? points.length : -1).map((point, index) => {
-    const next = points[(index + 1) % points.length];
-    if (point[0] === next[0] && point[1] === next[1]) throw new Error('Kartensegment ohne Länge.');
-    return [point, next];
-  });
 }
 
 export const city = parseCity(definition);

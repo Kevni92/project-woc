@@ -3,7 +3,7 @@ import {
   LineBasicMaterial, LineLoop, LineSegments, Mesh, MeshBasicMaterial, Shape, ShapeGeometry, Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { segments } from './city-data';
+import { segments } from './map-geometry';
 import type { City, Point } from './city-data';
 import type { Palette } from './palette';
 

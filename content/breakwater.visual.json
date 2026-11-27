@@ -1,0 +1,72 @@
+{
+  "visualVersion": 1,
+  "worldId": "p0-test-world",
+  "worldVersion": 2,
+  "revision": 1,
+  "buildings": [
+    {"buildingId": "north-01", "profile": "residential"},
+    {"buildingId": "north-02", "profile": "residential"},
+    {"buildingId": "north-03", "profile": "residential"},
+    {"buildingId": "north-04", "profile": "residential"},
+    {"buildingId": "north-05", "profile": "residential"},
+    {"buildingId": "north-06", "profile": "residential"},
+    {"buildingId": "north-07", "profile": "residential"},
+    {"buildingId": "north-08", "profile": "residential"},
+    {"buildingId": "north-09", "profile": "residential"},
+    {"buildingId": "north-10", "profile": "residential"},
+    {"buildingId": "north-11", "profile": "residential"},
+    {"buildingId": "north-12", "profile": "residential"},
+    {"buildingId": "old-02", "profile": "residential"},
+    {"buildingId": "old-04", "profile": "residential"},
+    {"buildingId": "old-08", "profile": "residential"},
+    {"buildingId": "old-09", "profile": "residential"},
+    {"buildingId": "old-12", "profile": "residential"},
+    {"buildingId": "old-13", "profile": "residential"},
+    {"buildingId": "dock-01", "profile": "warehouse"},
+    {"buildingId": "dock-02", "profile": "warehouse"},
+    {"buildingId": "dock-03", "profile": "warehouse"},
+    {"buildingId": "dock-04", "profile": "warehouse"},
+    {"buildingId": "dock-05", "profile": "warehouse"},
+    {"buildingId": "dock-06", "profile": "warehouse"},
+    {"buildingId": "dock-07", "profile": "warehouse"},
+    {"buildingId": "dock-08", "profile": "warehouse"},
+    {"buildingId": "dock-09", "profile": "warehouse"},
+    {"buildingId": "dock-10", "profile": "warehouse"},
+    {"buildingId": "dock-12", "profile": "warehouse"},
+    {"buildingId": "old-10", "profile": "commercial", "windows": "bands"},
+    {"buildingId": "dock-11", "profile": "warehouse", "roof": "gabled", "roofHeightM": 4}
+  ],
+  "roads": [
+    {"roadId": "civic-avenue", "profile": "main", "sidewalkWidthM": 1.8},
+    {"roadId": "quay-avenue", "profile": "main", "sidewalkWidthM": 2.2},
+    {"roadId": "shore-street", "profile": "local", "sidewalkWidthM": 1.1},
+    {"roadId": "north-avenue", "profile": "main", "markings": "none", "sidewalkWidthM": 1.5}
+  ],
+  "coasts": [
+    {"id": "breakwater-coast", "path": [[205, -490], [224, -398], [288, -363], [302, -284], [258, -245], [258, -183], [326, -183], [380, -141], [380, -67], [309, -67], [309, -16], [398, -16], [398, 95], [338, 95], [338, 149], [510, 149], [510, 203], [568, 203], [568, 291], [482, 291], [482, 342], [375, 342], [375, 414], [291, 414], [251, 510]]}
+  ],
+  "surfaces": [
+    {"id": "north-shore", "kind": "beach", "polygon": [[205, -490], [224, -398], [288, -363], [302, -284], [258, -245], [234, -250], [252, -278], [257, -298], [250, -324], [236, -345], [218, -356], [202, -377], [202, -398], [206, -414], [193, -441], [187, -468], [185, -490]]},
+    {"id": "south-pocket-beach", "kind": "beach", "polygon": [[375, 342], [375, 414], [291, 414], [285, 396], [317, 385], [328, 365], [349, 350]]},
+    {"id": "north-ridge-verge", "kind": "grass", "polygon": [[55, -410], [115, -410], [176, -400], [190, -388], [63, -388], [55, -395]]},
+    {"id": "north-terrace", "kind": "plaza", "polygon": [[145, -213], [216, -213], [234, -202], [234, -164], [225, -149], [146, -149]]},
+    {"id": "shore-walk", "kind": "promenade", "polygon": [[281, -143], [324, -143], [353, -124], [353, -115], [314, -126], [279, -126]]},
+    {"id": "market-court", "kind": "plaza", "polygon": [[40, -23], [77, -23], [88, -16], [86, -7], [37, -7], [32, -13]]},
+    {"id": "cafe-verge", "kind": "promenade", "polygon": [[21, 17], [51, 17], [54, 19], [54, 23], [53, 23], [53, 19], [21, 19]]},
+    {"id": "west-workyard", "kind": "parcel", "polygon": [[-317, -36], [-274, -36], [-266, -29], [-266, -8], [-304, -8], [-314, -15]]},
+    {"id": "library-garden", "kind": "grass", "polygon": [[151, 64], [189, 56], [230, 57], [255, 68], [255, 94], [146, 94]]},
+    {"id": "old-town-square", "kind": "plaza", "polygon": [[-106, 117], [-63, 117], [-49, 133], [-49, 161], [-91, 161], [-106, 148]]},
+    {"id": "garden-green", "kind": "grass", "polygon": [[-102, 194], [-53, 194], [-42, 202], [-42, 218], [-116, 218]]},
+    {"id": "old-town-parcels", "kind": "parcel", "polygon": [[-402, 115], [-350, 111], [-314, 117], [-309, 151], [-386, 151]]},
+    {"id": "cargo-apron", "kind": "parcel", "polygon": [[144, 293], [220, 293], [224, 301], [142, 301]]},
+    {"id": "dock-square", "kind": "plaza", "polygon": [[264, 221], [296, 228], [329, 239], [324, 246], [269, 233]]},
+    {"id": "pier-forecourt", "kind": "promenade", "polygon": [[435, 297], [457, 297], [468, 294], [476, 294], [476, 302], [433, 302]]},
+    {"id": "shipyard-berm", "kind": "grass", "polygon": [[253, 324], [284, 323], [311, 330], [310, 349], [292, 371], [256, 379]]},
+    {"id": "southern-yard", "kind": "parcel", "polygon": [[120, 392], [139, 384], [226, 384], [218, 407], [190, 422], [118, 416]]},
+    {"id": "south-green", "kind": "grass", "polygon": [[139, 439], [181, 434], [209, 438], [201, 464], [175, 487], [128, 484]]}
+  ],
+  "decorations": [
+    {"id": "east-quay-pier", "kind": "pier", "polygon": [[478, 303], [582, 303], [596, 310], [596, 319], [478, 319]], "elevationM": 1.9},
+    {"id": "harbor-slip", "kind": "pier", "polygon": [[563, 213], [594, 209], [599, 220], [563, 227]], "elevationM": 1.55}
+  ]
+}
