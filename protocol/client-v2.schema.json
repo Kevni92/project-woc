@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:woc:client:v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "type", "requestId", "payload"],
+  "properties": {
+    "protocolVersion": { "const": 2 },
+    "type": { "type": "string" },
+    "requestId": { "$ref": "#/definitions/id" },
+    "payload": { "type": "object" }
+  },
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characterId", "locationId"],
+      "properties": {
+        "characterId": { "$ref": "#/definitions/id" },
+        "locationId": { "$ref": "#/definitions/id" }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "characterId"],
+      "properties": {
+        "action": { "enum": ["AcquireCharacter", "ReleaseCharacter"] },
+        "characterId": { "$ref": "#/definitions/id" }
+      }
+    },
+    "move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "characterId", "locationId"],
+      "properties": {
+        "action": { "const": "MoveTo" },
+        "characterId": { "$ref": "#/definitions/id" },
+        "locationId": { "$ref": "#/definitions/id" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "type": { "enum": ["Hello", "SnapshotRequest"] },
+        "payload": { "maxProperties": 0 }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "Command" },
+        "payload": { "oneOf": [{ "$ref": "#/definitions/control" }, { "$ref": "#/definitions/move" }] }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "RoutePreview" },
+        "payload": { "$ref": "#/definitions/destination" }
+      }
+    }
+  ]
+}

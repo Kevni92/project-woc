@@ -39,11 +39,15 @@ for (const mode of modes) {
       let received: Delivery[] = [];
       let count = 0;
       for (const [i, frame] of frames.entries()) {
-        await page.evaluate(async frame => {
-          const modulePath = '/tests/contract-harness.ts';
-          const harness: typeof import('./contract-harness') = await import(modulePath);
-          await harness.apply(frame);
-        }, frame);
+        if (frame.op === 'tick' && server) {
+          server.tick();
+        } else {
+          await page.evaluate(async frame => {
+            const modulePath = '/tests/contract-harness.ts';
+            const harness: typeof import('./contract-harness') = await import(modulePath);
+            await harness.apply(frame);
+          }, frame);
+        }
         const snapshot = async () => page.evaluate(async () => {
           const modulePath = '/tests/contract-harness.ts';
           const harness: typeof import('./contract-harness') = await import(modulePath);
@@ -65,26 +69,39 @@ for (const mode of modes) {
         ['contended', 'CHARACTER_BUSY'],
         ['unauthorized', 'NOT_CONTROLLER'],
         ['failed-switch', 'CHARACTER_BUSY'],
+        ['reroute', 'ALREADY_TRAVELING'],
       ]) {
         expect(request(id)).toMatchObject({ type: 'CommandResult', payload: { accepted: false, code } });
       }
       expect(request('retained')).toMatchObject({ payload: { controlled: { id: 'resident-ben', cash: 200 } } });
       expect(request('hello-c')).toMatchObject({ payload: { sessionId: 'session-3' } });
       expect(request('hello-d')).toMatchObject({ payload: { sessionId: 'session-4' } });
+      expect(request('preview-a')).toMatchObject({
+        type: 'RoutePreviewResult', payload: { positionRevision: 0, route: { durationTicks: 4, distanceMm: 243629 } },
+      });
+      expect(request('private-preview')).toMatchObject({ payload: { accepted: false, code: 'NOT_CONTROLLER' } });
+      expect(request('unknown-place')).toMatchObject({ payload: { accepted: false, code: 'LOCATION_NOT_FOUND' } });
+      expect(request('final-b')).toMatchObject({ payload: {
+        controlled: { travel: { locationId: 'workshop', progressMm: 133333, remainingTicks: 2 } },
+      } });
+      expect(request('final-c')).toMatchObject({ payload: { controlled: { travel: null, locationId: 'market' } } });
+      expect(request('final-d')).toMatchObject({ payload: { controlled: { travel: null, locationId: 'workshop' } } });
 
-      for (const [id, character, cash, x, z] of [
-        ['final-b', 'resident-ada', 110, 1, 0],
-        ['final-c', 'resident-ben', 210, 11, 5],
-        ['final-d', 'resident-ada', 110, 1, 0],
+      for (const [id, character, cash, tick] of [
+        ['final-b', 'resident-ada', 100, 2],
+        ['final-c', 'resident-ben', 200, 2],
+        ['final-d', 'resident-ada', 100, 4],
       ] as const) {
         const message = request(id);
         expect(message).toMatchObject({
-          type: 'Snapshot', worldTick: 0,
-          payload: { gameMinutes: 480, controlled: { id: character, cash } },
+          type: 'Snapshot', worldTick: tick,
+          payload: { gameMinutes: 480 + tick, controlled: { id: character, cash } },
         });
         if (message?.type !== 'Snapshot') throw new Error('Missing final snapshot');
-        expect(message.payload.characters.find(row => row.id === character)?.position).toEqual({ x, z });
-        expect(message.payload.characters.every(row => !Object.hasOwn(row, 'cash'))).toBe(true);
+        const summary = message.payload.characters.find(row => row.id === character);
+        if (id === 'final-c') expect(summary?.position).toEqual({ x: 89, z: -28 });
+        if (id === 'final-d') expect(summary?.position).toEqual({ x: 26, z: 225 });
+        expect(message.payload.characters.every(row => !Object.hasOwn(row, 'cash') && !Object.hasOwn(row, 'travel'))).toBe(true);
       }
     } finally {
       await server?.stop();
@@ -100,6 +117,15 @@ for (const mode of modes) {
         const harness: typeof import('./contract-harness') = await import(modulePath);
         await harness.simulateGap();
       });
+      if (server) {
+        server.tick();
+      } else {
+        await page.evaluate(async () => {
+          const modulePath = '/tests/contract-harness.ts';
+          const harness: typeof import('./contract-harness') = await import(modulePath);
+          await harness.apply({ op: 'tick' });
+        });
+      }
       await expect.poll(() => page.evaluate(async () => {
         const modulePath = '/tests/contract-harness.ts';
         const harness: typeof import('./contract-harness') = await import(modulePath);
@@ -108,7 +134,9 @@ for (const mode of modes) {
         snapshotRequests: 1,
         state: {
           status: 'connected', synchronizing: false,
-          view: { revision: 2, controlled: { id: 'resident-ada', cash: 110 } },
+          view: { revision: 3, controlled: {
+            id: 'resident-ada', cash: 100, travel: { locationId: 'workshop', progressMm: 66666, remainingTicks: 3 },
+          } },
         },
       });
     } finally {
@@ -143,9 +171,9 @@ for (const mode of modes) {
       await expect(right.getByRole('alert')).toContainText('CHARACTER_BUSY');
       await benRight.getByRole('button', { name: 'Übernehmen' }).click();
       await expect(benRight.getByText('Bargeld · 200')).toBeVisible();
-      await adaLeft.getByRole('button', { name: 'Testaktion' }).click();
-      await expect(adaLeft.getByText('Bargeld · 110')).toBeVisible();
-      await expect(adaRight.getByText('1 m / 0 m')).toBeVisible();
+      await adaLeft.getByRole('button', { name: 'Zu Fuß zu Möwenpark' }).click();
+      await expect(adaLeft.getByText('Bargeld · 100')).toBeVisible();
+      await expect(adaRight.getByText('0 m / 0 m')).toHaveCount(0);
       await expect(adaRight.getByText('Bargeld')).toHaveCount(0);
       await expect(left.getByRole('listitem').filter({ hasText: 'Passant' }).getByRole('button')).toHaveCount(0);
       await expect(left.getByText(/Tag 1, 08:0[1-9]/)).toBeVisible();
@@ -153,13 +181,14 @@ for (const mode of modes) {
       await adaLeft.getByRole('button', { name: 'Freigeben' }).click();
       await expect(adaRight.getByText('Frei')).toBeVisible();
       await adaRight.getByRole('button', { name: 'Übernehmen' }).click();
-      await expect(adaRight.getByText('Bargeld · 110')).toBeVisible();
+      await expect(adaRight.getByText('Bargeld · 100')).toBeVisible();
+      await expect(adaRight.getByText(/Unterwegs · overlook/)).toBeVisible();
       await right.getByRole('button', { name: 'Trennen' }).click();
       await expect(adaLeft.getByText('Frei')).toBeVisible();
       await right.getByRole('button', { name: 'Verbinden' }).click();
       await expect(right.getByText('Verbunden · session-3')).toBeVisible();
       await adaRight.getByRole('button', { name: 'Übernehmen' }).click();
-      await expect(adaRight.getByText('Bargeld · 110')).toBeVisible();
+      await expect(adaRight.getByText('Bargeld · 100')).toBeVisible();
       await right.getByRole('button', { name: 'Snapshot anfordern' }).click();
       await expect(right.getByRole('button', { name: 'Snapshot anfordern' })).toBeEnabled();
 

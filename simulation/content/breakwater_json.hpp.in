@@ -1,0 +1,4 @@
+#pragma once
+
+inline constexpr unsigned char breakwater_json[] = {
+@breakwater_bytes@};

@@ -34,6 +34,8 @@ export function projectMap(session?: ClientState, pending = false) {
     gameMinutes: view?.gameMinutes,
     controlled: markers.find(marker => marker.kind === 'owned'),
     cash: controlled?.cash,
+    travel: controlled?.travel,
+    locationId: controlled?.locationId,
     canCommand: connected && !!view && !synchronizing && !pending,
     synchronizing,
   };

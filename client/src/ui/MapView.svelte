@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { city } from '../render/city-data';
   import type { Point } from '../render/city-data';
-  import type { CommandResult } from '../simulation/protocol';
+  import type { CommandResult, RoutePreviewResult } from '../simulation/protocol';
   import type { ClientState, SimulationClient } from '../simulation/simulation-client';
   import MapViewport from './MapViewport.svelte';
   import { formatClock, projectMap } from './map-projection';
@@ -17,13 +17,29 @@
   let awaitingRevision = $state<number>();
   let actionError = $state<string>();
   let selection = $state<Selection>();
+  let preview = $state.raw<{ key: string; result: RoutePreviewResult }>();
 
   const waitingForUpdate = $derived(awaitingRevision !== undefined && (session?.view?.revision ?? -1) < awaitingRevision);
   const projection = $derived(projectMap(session, pending || waitingForUpdate));
   const selectedLocation = $derived(selection?.kind === 'location' ? city.locations.find(location => location.id === selection?.id) : undefined);
   const selectedBuilding = $derived(selection?.kind === 'building' ? city.buildings.find(building => building.id === selection?.id) : undefined);
   const selectedCharacter = $derived(selection?.kind === 'character' ? projection.markers.find(marker => marker.id === selection?.id) : undefined);
+  const characterId = $derived(projection.controlled?.id);
+  const locationId = $derived(selectedLocation?.id);
+  const positionRevision = $derived(session?.view?.controlled?.positionRevision);
+  const canPreview = $derived(!!characterId && !!locationId && !projection.travel);
+  const snapshotSequence = $derived(session?.view?.snapshotSequence);
+  const previewKey = $derived(canPreview
+    ? [session?.sessionId, snapshotSequence, characterId, locationId, positionRevision].join('/') : undefined);
+  const previewResult = $derived(preview?.key === previewKey ? preview?.result : undefined);
+  const proposedRoute = $derived(previewResult?.accepted && previewResult.characterId === characterId
+    && previewResult.locationId === locationId && previewResult.positionRevision === positionRevision
+    ? previewResult.route : undefined);
+  const route = $derived(projection.travel?.route ?? proposedRoute);
+  const travelDestination = $derived(city.locations.find(location => location.id === projection.travel?.locationId));
+  const arrivedAt = $derived(city.locations.find(location => location.id === projection.locationId));
   const districtName = (id: string) => city.districts.find(district => district.id === id)?.name;
+  const meters = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 });
 
   const markerLabels: Record<MarkerKind, string> = {
     owned: 'Eigene Steuerung', resident: 'Frei', occupied: 'Belegt', ambient: 'Ambient',
@@ -36,6 +52,21 @@
       if (untrack(() => selection?.kind) === 'character') selection = undefined;
     }
   }));
+
+  $effect(() => {
+    const key = previewKey;
+    const character = characterId;
+    const location = locationId;
+    if (!key || !character || !location) return;
+    let current = true;
+    void client.previewRoute(character, location).then(
+      result => { if (current) preview = { key, result }; },
+      error => {
+        if (current) preview = { key, result: { accepted: false, code: error instanceof Error ? error.message : 'UNEXPECTED_ERROR' } };
+      },
+    );
+    return () => { current = false; };
+  });
 
   function select(next?: Selection, focusPoint?: Point) {
     selection = next;
@@ -97,7 +128,7 @@
   <div class="atlas-body">
     <div class="atlas-map">
       <MapViewport bind:this={viewport} markers={projection.markers} gameMinutes={projection.gameMinutes}
-        {selection} focusPoint={projection.controlled?.position} onselect={select} />
+        {selection} {route} focusPoint={projection.controlled?.position} onselect={select} />
       <ul class="map-legend" aria-label="Kartenlegende">
         <li class="owned"><span class="marker-symbol"></span> Eigene Steuerung</li>
         <li class="resident"><span class="marker-symbol"></span> Bewohner</li>
@@ -110,6 +141,15 @@
       {#if session?.error || actionError}
         <p class="atlas-error" role="alert">{session?.error ?? actionError}</p>
       {/if}
+      {#if projection.travel && travelDestination}
+        <section class="map-details travel-details" aria-label="Laufende Reise">
+          <p class="atlas-kicker">Zu Fuß unterwegs</p>
+          <h2>{travelDestination.name}</h2>
+          <p class="detail-meta">Noch {projection.travel.remainingTicks} Spielmin.</p>
+        </section>
+      {:else if arrivedAt}
+        <p class="travel-arrival" role="status">Angekommen · {arrivedAt.name}</p>
+      {/if}
       {#if selectedLocation || selectedBuilding || selectedCharacter}
         <section class="map-details" aria-label="Auswahl">
           <div class="details-heading">
@@ -120,6 +160,21 @@
             <h2>{selectedLocation.name}</h2>
             <p class="detail-meta">{districtName(selectedLocation.district)}</p>
             <p class="detail-description">{selectedLocation.description}</p>
+            {#if proposedRoute}
+              {#if proposedRoute.distanceMm > 0}
+                <p class="detail-meta route-preview">{meters.format(proposedRoute.distanceMm / 1000)} m · {proposedRoute.durationTicks} Spielmin.</p>
+                {@const ownId = characterId}
+                {@const destinationId = selectedLocation.id}
+                {#if ownId}
+                  <button class="detail-action claim" disabled={!projection.canCommand}
+                    onclick={() => run(() => client.moveTo(ownId, destinationId))}>Zu Fuß gehen</button>
+                {/if}
+              {:else}
+                <p class="detail-meta">Bereits am Ziel</p>
+              {/if}
+            {:else if previewResult && !previewResult.accepted}
+              <p class="atlas-error" role="alert">{previewResult.code}</p>
+            {/if}
           {:else if selectedBuilding}
             <h2>{selectedBuilding.id.toUpperCase()}</h2>
             <p class="detail-meta">{districtName(selectedBuilding.district)} · {selectedBuilding.height} m Höhe</p>
@@ -131,7 +186,7 @@
             <h2>{marker.name}</h2>
             <p class="detail-meta">{markerLabels[marker.kind]}</p>
             <dl class="character-details">
-              <div><dt>Position</dt><dd>{marker.position[0]} m / {marker.position[1]} m</dd></div>
+              <div><dt>Position</dt><dd>{meters.format(marker.position[0])} m / {meters.format(marker.position[1])} m</dd></div>
               {#if marker.kind === 'owned'}<div><dt>Bargeld</dt><dd>{projection.cash}</dd></div>{/if}
             </dl>
             {#if marker.kind === 'owned'}

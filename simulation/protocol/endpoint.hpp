@@ -22,6 +22,7 @@ using Deliveries = std::vector<Delivery>;
 // its deliveries are handed to the transport.
 class Endpoint {
 public:
+    Endpoint();
     void open(ConnectionId connection);
     [[nodiscard]] Deliveries close(ConnectionId connection);
     [[nodiscard]] Deliveries receive(ConnectionId connection, std::string_view message);
@@ -32,6 +33,7 @@ private:
         std::string request_id;
         std::string action;
         std::string character;
+        std::string location;
         std::optional<Rejection> rejection;
         std::uint64_t revision;
     };

@@ -3,6 +3,7 @@ import { startServer } from './native-host';
 
 for (const mode of ['wasm', 'ws'] as const) {
   test(mode + ' renders and controls the same live city', async ({ page }) => {
+    test.setTimeout(60_000);
     const server = mode === 'ws' ? await startServer(false) : null;
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -24,6 +25,19 @@ for (const mode of ['wasm', 'ws'] as const) {
       const ben = map.getByRole('button', { name: 'Ben', exact: true });
       const passerby = map.getByRole('button', { name: 'Passant', exact: true });
       const places = page.getByRole('region', { name: 'Orte' });
+      const routePixels = async () => page.evaluate(async base64 => {
+        const blob = await (await fetch('data:image/png;base64,' + base64)).blob();
+        const bitmap = await createImageBitmap(blob);
+        const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!;
+        context.drawImage(bitmap, 0, 0);
+        const { data } = context.getImageData(0, 0, bitmap.width, bitmap.height);
+        let matching = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] < 135 && data[i + 1] > 165 && data[i + 2] > 150) ++matching;
+        }
+        bitmap.close();
+        return matching;
+      }, (await canvas.screenshot()).toString('base64'));
 
       await expect(modeLabel).toHaveText('2D');
       await expect(places.getByRole('button')).toHaveCount(6);
@@ -77,22 +91,45 @@ for (const mode of ['wasm', 'ws'] as const) {
       await expect(modeLabel).toHaveText('2D');
       await expect.poll(() => ada.evaluate(element => element.style.left)).toBe(initialMarkerX);
 
+      const baselineRoutePixels = await routePixels();
+      await map.getByRole('button', { name: 'Pier 7' }).click();
+      await expect(details.getByText('738,4 m · 12 Spielmin.')).toBeVisible();
+      await expect.poll(routePixels).toBeGreaterThan(baselineRoutePixels + 60);
+      await map.getByRole('button', { name: 'Eigenen Charakter fokussieren' }).click();
+      await expect(modeLabel).toHaveText('3D');
+      await expect.poll(routePixels).toBeGreaterThan(baselineRoutePixels + 60);
+      await map.getByRole('button', { name: 'Karte zurücksetzen' }).click();
+      await expect(modeLabel).toHaveText('2D');
+      await details.getByRole('button', { name: 'Zu Fuß gehen' }).click();
+      const travel = page.getByRole('region', { name: 'Laufende Reise' });
+      await expect(travel.getByRole('heading', { name: 'Pier 7' })).toBeVisible();
+      await expect(travel.getByText(/Noch (?:[1-9]|10|11) Spielmin/)).toBeVisible();
+      await expect.poll(routePixels).toBeGreaterThan(baselineRoutePixels + 60);
+      await ada.click();
+      await expect(details.getByText('0 m / 0 m')).toHaveCount(0);
+      await expect(page.getByText('Angekommen · Pier 7')).toBeVisible({ timeout: 16_000 });
+      await expect(details.getByText('425 m / 295 m')).toBeVisible();
+      await expect.poll(routePixels).toBeLessThan(baselineRoutePixels + 30);
+      await map.getByRole('button', { name: 'Pier 7' }).click();
+      await expect(details.getByText('Bereits am Ziel')).toBeVisible();
+
       await page.getByRole('link', { name: 'Debugger' }).click();
       const clientA = page.getByRole('region', { name: 'Client A' });
       const clientB = page.getByRole('region', { name: 'Client B' });
       await expect(clientA.getByText('Verbunden · session-1')).toBeVisible();
-      await clientA.getByRole('button', { name: 'Testaktion' }).click();
-      await expect(clientA.getByText('1 m / 0 m', { exact: false })).toBeVisible();
+      await clientA.getByRole('button', { name: 'Zu Fuß zu Möwenpark' }).click();
+      await expect(clientA.getByText(/Unterwegs · overlook/)).toBeVisible();
+      await expect(clientA.getByText('425 m / 295 m', { exact: false })).toHaveCount(0);
       await clientB.getByRole('button', { name: 'Verbinden' }).click();
       await clientB.getByRole('listitem').filter({ hasText: 'Ben' }).getByRole('button', { name: 'Übernehmen' }).click();
       await expect(clientB.getByText('Bargeld · 200')).toBeVisible();
 
       await page.getByRole('link', { name: 'Zur Stadtkarte' }).click();
       await expect(ada).toHaveClass(/owned/);
-      await expect.poll(() => ada.evaluate(element => element.style.left)).not.toBe(initialMarkerX);
+      await expect(travel.getByRole('heading', { name: 'Möwenpark' })).toBeVisible();
       await ada.click();
-      await expect(details.getByText('1 m / 0 m')).toBeVisible();
-      await expect(details.getByText('110', { exact: true })).toBeVisible();
+      await expect(details.getByText('425 m / 295 m')).toHaveCount(0);
+      await expect(details.getByText('100', { exact: true })).toBeVisible();
       await details.getByRole('button', { name: 'Freigeben' }).click();
       await expect(ada).toHaveClass(/resident/);
       await expect(details.getByText('Bargeld')).toHaveCount(0);

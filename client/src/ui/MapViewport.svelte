@@ -5,18 +5,20 @@
   import type { MarkerLayout } from '../render/map-anchors';
   import type { MapFrame } from '../render/map-renderer';
   import type { Point } from '../render/city-data';
+  import type { Route } from '../simulation/protocol';
   import type { CharacterMarker } from './map-projection';
   import './map.css';
 
   interface Props {
     markers: readonly CharacterMarker[];
     gameMinutes?: number;
+    route?: Route;
     selection?: { kind: 'location' | 'building' | 'character'; id: string };
     focusPoint?: Point;
     onselect: (selection: Props['selection']) => void;
   }
 
-  let { markers, gameMinutes, selection, focusPoint, onselect }: Props = $props();
+  let { markers, gameMinutes, route, selection, focusPoint, onselect }: Props = $props();
   let canvas: HTMLCanvasElement;
   let container: HTMLElement;
   let renderer = $state.raw<MapRenderer>();
@@ -44,6 +46,8 @@
     const minutes = gameMinutes ?? 480;
     renderer?.setTime(minutes);
   });
+
+  $effect(() => renderer?.setRoute(route));
 
   $effect(() => {
     const buildingId = selection?.kind === 'building' ? selection.id

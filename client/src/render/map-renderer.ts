@@ -1,10 +1,14 @@
 import { Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { MapCamera } from './map-camera';
 import { GeographyLayer } from './geography-layer';
 import { layoutMarkers } from './map-anchors';
 import { paletteAt, twilight } from './palette';
 import type { City, Point } from './city-data';
 import type { Anchor, MarkerLayout, ScreenAnchor } from './map-anchors';
+import type { Route } from '../simulation/protocol';
 
 export interface MapFrame {
   readonly districts: ReadonlyMap<string, ScreenAnchor>;
@@ -20,6 +24,9 @@ export interface MapFrame {
 
 export class MapRenderer {
   private readonly scene = new Scene();
+  private readonly routeLine = new Line2(
+    new LineGeometry(), new LineMaterial({ color: 0x57e5d1, linewidth: 3, transparent: true, opacity: 0.85 }),
+  );
   private readonly renderer: WebGLRenderer;
   private readonly geography: GeographyLayer;
   private readonly view: MapCamera;
@@ -60,6 +67,9 @@ export class MapRenderer {
       height: location.building ? heights.get(location.building) : undefined,
     }));
     this.scene.add(this.geography.group);
+    this.routeLine.visible = false;
+    this.routeLine.frustumCulled = false;
+    this.scene.add(this.routeLine);
     this.setTime(480);
 
     const { signal } = this.events;
@@ -89,6 +99,15 @@ export class MapRenderer {
 
   setCharacters(characters: readonly Anchor[]) {
     this.characters = characters;
+    this.invalidate();
+  }
+
+  setRoute(route?: Route) {
+    this.routeLine.visible = !!route && route.points.length > 1;
+    if (this.routeLine.visible && route) {
+      this.routeLine.geometry.dispose();
+      this.routeLine.geometry = new LineGeometry().setPositions(route.points.flatMap(({ x, z }) => [x, 0.6, z]));
+    }
     this.invalidate();
   }
 
@@ -123,6 +142,8 @@ export class MapRenderer {
     this.observer.disconnect();
     this.events.abort();
     this.geography.dispose();
+    this.routeLine.geometry.dispose();
+    this.routeLine.material.dispose();
     this.scene.clear();
     this.renderer.dispose();
     this.renderer.forceContextLoss();

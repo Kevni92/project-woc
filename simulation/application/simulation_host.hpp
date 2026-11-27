@@ -2,21 +2,21 @@
 
 #include "core/world.hpp"
 
-#include <map>
-#include <optional>
-
 namespace woc {
 
 using SessionId = std::uint64_t;
 
-enum class CommandKind { acquire, release, test_action };
+enum class CommandKind { acquire, release, move_to };
 
 enum class Rejection {
     character_not_found,
     not_eligible,
     character_busy,
     not_controller,
-    invalid_action,
+    location_not_found,
+    already_traveling,
+    already_at_location,
+    unreachable,
 };
 
 struct CharacterSummary {
@@ -25,13 +25,21 @@ struct CharacterSummary {
     bool eligible;
     bool occupied;
     Position position;
+    MovementStatus status;
     bool operator==(const CharacterSummary&) const = default;
 };
 
 struct ControlledCharacter {
     std::string_view id;
     std::int64_t cash;
-    bool operator==(const ControlledCharacter&) const = default;
+    std::uint64_t position_revision;
+    std::optional<std::string_view> location;
+    std::optional<Travel> travel;
+};
+
+struct RoutePreview {
+    std::uint64_t position_revision;
+    Route route;
 };
 
 struct View {
@@ -44,15 +52,23 @@ struct View {
 
 class SimulationHost {
 public:
+    explicit SimulationHost(const WorldDefinition& definition) : world_(definition) {}
+
     [[nodiscard]] SessionId connect();
     void disconnect(SessionId session);
-    [[nodiscard]] std::optional<Rejection> execute(
-        SessionId session, CommandKind command, std::string_view character_id);
+    [[nodiscard]] std::expected<std::optional<MovementStarted>, Rejection> execute(
+        SessionId session, CommandKind command, std::string_view character_id, std::string_view location = {});
+    [[nodiscard]] std::expected<RoutePreview, Rejection> preview(
+        SessionId session, std::string_view character_id, std::string_view location) const;
     [[nodiscard]] View view(SessionId session) const;
+    [[nodiscard]] const WorldDefinition& definition() const { return world_.definition(); }
     [[nodiscard]] std::uint64_t world_tick() const { return world_.tick(); }
-    void advance();
+    [[nodiscard]] std::uint64_t revision() const { return revision_; }
+    [[nodiscard]] MovementEvents advance();
 
 private:
+    [[nodiscard]] std::optional<std::size_t> character_index(std::string_view id) const;
+
     World world_;
     std::uint64_t revision_ = 0;
     SessionId next_session_ = 1;

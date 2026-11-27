@@ -1,0 +1,217 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:woc:server:v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "type", "streamSeq", "worldTick", "payload"],
+  "properties": {
+    "protocolVersion": { "const": 2 },
+    "type": { "type": "string" },
+    "streamSeq": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "worldTick": { "$ref": "#/definitions/count" },
+    "requestId": { "$ref": "#/definitions/id" },
+    "payload": { "type": "object" }
+  },
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "coordinate": { "type": "number", "minimum": -10000, "maximum": 10000 },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "z"],
+      "properties": {
+        "x": { "$ref": "#/definitions/coordinate" },
+        "z": { "$ref": "#/definitions/coordinate" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "eligible", "occupied", "position", "status"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "name": { "type": "string" },
+        "eligible": { "type": "boolean" },
+        "occupied": { "type": "boolean" },
+        "position": { "$ref": "#/definitions/position" },
+        "status": { "enum": ["Idle", "Traveling", "AtLocation"] }
+      }
+    },
+    "characters": { "type": "array", "items": { "$ref": "#/definitions/summary" } },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distanceMm", "durationTicks", "points", "edgeIds"],
+      "properties": {
+        "distanceMm": { "$ref": "#/definitions/count" },
+        "durationTicks": { "$ref": "#/definitions/count" },
+        "points": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/position" } },
+        "edgeIds": { "type": "array", "items": { "$ref": "#/definitions/id" } }
+      }
+    },
+    "travel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locationId", "startTick", "progressMm", "remainingTicks", "route"],
+      "properties": {
+        "locationId": { "$ref": "#/definitions/id" },
+        "startTick": { "$ref": "#/definitions/count" },
+        "progressMm": { "$ref": "#/definitions/count" },
+        "remainingTicks": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "route": { "$ref": "#/definitions/route" }
+      }
+    },
+    "controlled": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "cash", "positionRevision", "locationId", "travel"],
+          "properties": {
+            "id": { "$ref": "#/definitions/id" },
+            "cash": { "$ref": "#/definitions/count" },
+            "positionRevision": { "$ref": "#/definitions/count" },
+            "locationId": { "anyOf": [{ "$ref": "#/definitions/id" }, { "type": "null" }] },
+            "travel": { "anyOf": [{ "$ref": "#/definitions/travel" }, { "type": "null" }] }
+          }
+        }
+      ]
+    },
+    "rejection": {
+      "enum": [
+        "CHARACTER_NOT_FOUND", "NOT_ELIGIBLE", "CHARACTER_BUSY", "NOT_CONTROLLER",
+        "LOCATION_NOT_FOUND", "ALREADY_TRAVELING", "ALREADY_AT_LOCATION", "UNREACHABLE"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "required": ["requestId"],
+      "properties": {
+        "type": { "const": "Welcome" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sessionId", "worldId", "contentVersion", "capabilities"],
+          "properties": {
+            "sessionId": { "$ref": "#/definitions/id" },
+            "worldId": { "$ref": "#/definitions/id" },
+            "contentVersion": { "type": "integer", "minimum": 1 },
+            "capabilities": { "type": "array", "items": { "$ref": "#/definitions/id" } }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "Snapshot" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["revision", "gameMinutes", "characters", "controlled"],
+          "properties": {
+            "revision": { "$ref": "#/definitions/count" },
+            "gameMinutes": { "$ref": "#/definitions/count" },
+            "characters": { "$ref": "#/definitions/characters" },
+            "controlled": { "$ref": "#/definitions/controlled" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "Delta" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["revision", "gameMinutes", "characters", "controlled", "baseRevision"],
+          "properties": {
+            "revision": { "$ref": "#/definitions/count" },
+            "gameMinutes": { "$ref": "#/definitions/count" },
+            "characters": { "$ref": "#/definitions/characters" },
+            "controlled": { "$ref": "#/definitions/controlled" },
+            "baseRevision": { "$ref": "#/definitions/count" }
+          }
+        }
+      }
+    },
+    {
+      "required": ["requestId"],
+      "properties": {
+        "type": { "const": "CommandResult" },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["accepted", "revision"],
+              "properties": {
+                "accepted": { "const": true },
+                "revision": { "$ref": "#/definitions/count" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["accepted", "revision", "code"],
+              "properties": {
+                "accepted": { "const": false },
+                "revision": { "$ref": "#/definitions/count" },
+                "code": { "$ref": "#/definitions/rejection" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "required": ["requestId"],
+      "properties": {
+        "type": { "const": "RoutePreviewResult" },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["accepted", "characterId", "locationId", "positionRevision", "route"],
+              "properties": {
+                "accepted": { "const": true },
+                "characterId": { "$ref": "#/definitions/id" },
+                "locationId": { "$ref": "#/definitions/id" },
+                "positionRevision": { "$ref": "#/definitions/count" },
+                "route": { "$ref": "#/definitions/route" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["accepted", "code"],
+              "properties": {
+                "accepted": { "const": false },
+                "code": { "$ref": "#/definitions/rejection" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": { "const": "Error" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code"],
+          "properties": {
+            "code": { "enum": [
+              "INVALID_MESSAGE", "UNSUPPORTED_VERSION", "ALREADY_CONNECTED",
+              "HELLO_REQUIRED", "UNKNOWN_COMMAND", "REQUEST_ID_REUSED"
+            ] }
+          }
+        }
+      }
+    }
+  ]
+}

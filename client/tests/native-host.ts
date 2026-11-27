@@ -9,8 +9,8 @@ export function binary(name: string): string {
 }
 
 export async function startServer(manual: boolean) {
-  const command = manual ? ['--port', '0', '--manual-clock'] : ['--port', '0'];
-  const child = spawn(binary('woc_server'), command, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const command = manual ? ['--port', '0', '--manual-clock-stdin'] : ['--port', '0'];
+  const child = spawn(binary('woc_server'), command, { stdio: ['pipe', 'pipe', 'pipe'] });
   const lines = createInterface({ input: child.stdout });
   let diagnostic = '';
   child.stderr.setEncoding('utf8').on('data', chunk => { diagnostic += chunk; });
@@ -24,6 +24,10 @@ export async function startServer(manual: boolean) {
     }
     return {
       url,
+      tick() {
+        if (!manual) throw new Error('Expected manual clock');
+        child.stdin.write('tick\n');
+      },
       async stop() {
         if (child.exitCode === null && child.signalCode === null) {
           const exited = once(child, 'exit');

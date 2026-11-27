@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { city } from '../render/city-data';
   import type { CommandResult } from '../simulation/protocol';
   import type { ClientState, SimulationClient } from '../simulation/simulation-client';
 
@@ -74,6 +75,7 @@
     <ul class="characters" aria-label="Charaktere">
       {#each view.characters as character (character.id)}
         {@const controlled = view.controlled?.id === character.id ? view.controlled : null}
+        {@const destination = city.locations.find(location => location.id !== controlled?.locationId)}
         <li aria-label={character.name}>
           <div>
             <strong>{character.name}</strong>
@@ -81,13 +83,18 @@
               {controlled ? 'Eigene Steuerung' : character.occupied ? 'Belegt' : character.eligible ? 'Frei' : 'Ambient'}
             </p>
             {#if controlled}<p>Bargeld · {controlled.cash}</p>{/if}
+            {#if controlled?.travel}
+              <p>Unterwegs · {controlled.travel.locationId} · {controlled.travel.remainingTicks} Spielmin.</p>
+            {/if}
           </div>
           {#if controlled}
             <div class="actions">
-              <button disabled={pending || session.synchronizing}
-                onclick={() => command(() => client.sendCommand({ action: 'TestAction', characterId: character.id }))}>
-                Testaktion
-              </button>
+              {#if destination}
+                <button disabled={pending || session.synchronizing || !!controlled.travel}
+                  onclick={() => command(() => client.moveTo(character.id, destination.id))}>
+                  Zu Fuß zu {destination.name}
+                </button>
+              {/if}
               <button disabled={pending || session.synchronizing}
                 onclick={() => command(() => client.releaseCharacter(character.id))}>
                 Freigeben

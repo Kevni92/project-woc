@@ -1,4 +1,5 @@
 #include "protocol/endpoint.hpp"
+#include "content/city.hpp"
 
 #include <algorithm>
 #include <initializer_list>
@@ -8,7 +9,7 @@ namespace woc::protocol {
 namespace {
 
 using Json = nlohmann::json;
-constexpr int version = 1;
+constexpr int version = 2;
 constexpr std::size_t command_history_size = 64;
 
 std::string_view error_code(Rejection rejection) {
@@ -17,15 +18,18 @@ std::string_view error_code(Rejection rejection) {
         case Rejection::not_eligible: return "NOT_ELIGIBLE";
         case Rejection::character_busy: return "CHARACTER_BUSY";
         case Rejection::not_controller: return "NOT_CONTROLLER";
-        case Rejection::invalid_action: return "INVALID_ACTION";
+        case Rejection::location_not_found: return "LOCATION_NOT_FOUND";
+        case Rejection::already_traveling: return "ALREADY_TRAVELING";
+        case Rejection::already_at_location: return "ALREADY_AT_LOCATION";
+        case Rejection::unreachable: return "UNREACHABLE";
     }
-    return "INVALID_ACTION";
+    return "UNREACHABLE";
 }
 
 std::optional<CommandKind> command_kind(std::string_view action) {
     if (action == "AcquireCharacter") return CommandKind::acquire;
     if (action == "ReleaseCharacter") return CommandKind::release;
-    if (action == "TestAction") return CommandKind::test_action;
+    if (action == "MoveTo") return CommandKind::move_to;
     return std::nullopt;
 }
 
@@ -48,15 +52,39 @@ std::string_view read_id(const Json& object, std::string_view key) {
     return value.find_first_not_of(allowed) == std::string::npos ? value : std::string_view{};
 }
 
+Json position(Position point) {
+    return {{"x", static_cast<double>(point.x) / 1000}, {"z", static_cast<double>(point.z) / 1000}};
+}
+
+std::string_view movement_status(MovementStatus status) {
+    switch (status) {
+        case MovementStatus::idle: return "Idle";
+        case MovementStatus::traveling: return "Traveling";
+        case MovementStatus::at_location: return "AtLocation";
+    }
+    return "Idle";
+}
+
 Json summary(const CharacterSummary& character) {
     return {
         {"id", character.id}, {"name", character.name}, {"eligible", character.eligible},
         {"occupied", character.occupied},
-        {"position", {{"x", character.position.x}, {"z", character.position.z}}},
+        {"position", position(character.position)}, {"status", movement_status(character.status)},
     };
 }
 
-Json projection(const View& view, const View* previous = nullptr) {
+Json route_details(const Route& route, const Navigation& navigation) {
+    auto points = Json::array();
+    for (const auto point : navigation.geometry(route)) points.push_back(position(point));
+    auto edges = Json::array();
+    for (const auto& leg : route.legs) edges.push_back(navigation.edges()[leg.edge].id);
+    return {
+        {"distanceMm", route.length}, {"durationTicks", walking_ticks(route.length)},
+        {"points", std::move(points)}, {"edgeIds", std::move(edges)},
+    };
+}
+
+Json projection(const View& view, const Navigation& navigation, const View* previous = nullptr) {
     Json characters = Json::array();
     for (std::size_t i = 0; i < view.characters.size(); ++i) {
         if (!previous || view.characters[i] != previous->characters[i]) {
@@ -65,7 +93,20 @@ Json projection(const View& view, const View* previous = nullptr) {
     }
     Json controlled = nullptr;
     if (view.controlled) {
-        controlled = {{"id", view.controlled->id}, {"cash", view.controlled->cash}};
+        const auto& character = *view.controlled;
+        controlled = {
+            {"id", character.id}, {"cash", character.cash}, {"positionRevision", character.position_revision},
+            {"locationId", character.location ? Json(*character.location) : Json(nullptr)},
+            {"travel", nullptr},
+        };
+        if (character.travel) {
+            const auto& trip = *character.travel;
+            controlled["travel"] = {
+                {"locationId", *trip.location}, {"startTick", trip.started_at}, {"progressMm", trip.traveled},
+                {"remainingTicks", walking_ticks(trip.route.length) - (view.tick - trip.started_at)},
+                {"route", route_details(trip.route, navigation)},
+            };
+        }
     }
     Json result = {
         {"revision", view.revision}, {"gameMinutes", view.game_minutes},
@@ -79,9 +120,9 @@ Json projection(const View& view, const View* previous = nullptr) {
 
 std::string encode(
     std::uint64_t& sequence, std::string_view type, std::string_view request_id,
-    Json payload, std::uint64_t world_tick) {
+    Json payload, std::uint64_t world_tick, int wire_version = version) {
     Json message = {
-        {"protocolVersion", version}, {"type", type}, {"streamSeq", ++sequence},
+        {"protocolVersion", wire_version}, {"type", type}, {"streamSeq", ++sequence},
         {"worldTick", world_tick}, {"payload", std::move(payload)},
     };
     if (!request_id.empty()) {
@@ -91,6 +132,8 @@ std::string encode(
 }
 
 }
+
+Endpoint::Endpoint() : host_(content::breakwater()) {}
 
 void Endpoint::open(ConnectionId connection) {
     connections_.try_emplace(connection);
@@ -118,7 +161,7 @@ void Endpoint::publish_changes(Deliveries& deliveries) {
         const auto view = host_.view(*connection.session);
         if (view.revision != connection.last_view->revision) {
             deliveries.push_back({id, encode(connection.sequence, "Delta", {},
-                projection(view, &*connection.last_view), view.tick)});
+                projection(view, host_.definition().navigation, &*connection.last_view), view.tick)});
             connection.last_view = view;
         }
     }
@@ -150,7 +193,10 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
         return deliveries;
     }
     if (message["protocolVersion"] != version) {
-        error("UNSUPPORTED_VERSION");
+        // A v1 client can read the rejection using its own error envelope.
+        deliveries.push_back({id, encode(connection.sequence, "Error", request_id,
+            {{"code", "UNSUPPORTED_VERSION"}}, host_.world_tick(),
+            message["protocolVersion"] == 1 ? 1 : version)});
         return deliveries;
     }
 
@@ -166,10 +212,10 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
             connection.last_view = host_.view(*connection.session);
             send("Welcome", {
                 {"sessionId", "session-" + std::to_string(*connection.session)},
-                {"worldId", "p0-test-world"},
-                {"capabilities", Json::array({"CharacterControl", "TestAction", "SnapshotDelta"})},
+                {"worldId", host_.definition().id}, {"contentVersion", host_.definition().version},
+                {"capabilities", Json::array({"CharacterControl", "FootTravel", "SnapshotDelta"})},
             });
-            send("Snapshot", projection(*connection.last_view), false);
+            send("Snapshot", projection(*connection.last_view, host_.definition().navigation), false);
         }
         return deliveries;
     }
@@ -180,16 +226,39 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
 
     if (type == "SnapshotRequest" && payload.empty()) {
         connection.last_view = host_.view(*connection.session);
-        send("Snapshot", projection(*connection.last_view));
+        send("Snapshot", projection(*connection.last_view, host_.definition().navigation));
         return deliveries;
     }
-    if (type != "Command" || !has_exact_keys(payload, {"action", "characterId"})) {
+    if (type == "RoutePreview") {
+        const auto character = read_id(payload, "characterId");
+        const auto location = read_id(payload, "locationId");
+        if (!has_exact_keys(payload, {"characterId", "locationId"}) || character.empty() || location.empty()) {
+            error("INVALID_MESSAGE");
+            return deliveries;
+        }
+        const auto result = host_.preview(*connection.session, character, location);
+        if (result) {
+            send("RoutePreviewResult", {
+                {"accepted", true}, {"characterId", character}, {"locationId", location},
+                {"positionRevision", result->position_revision},
+                {"route", route_details(result->route, host_.definition().navigation)},
+            });
+        } else {
+            send("RoutePreviewResult", {{"accepted", false}, {"code", error_code(result.error())}});
+        }
+        return deliveries;
+    }
+    if (type != "Command") {
         error("INVALID_MESSAGE");
         return deliveries;
     }
     const auto action = read_id(payload, "action");
     const auto character = read_id(payload, "characterId");
-    if (action.empty() || character.empty()) {
+    const auto location = read_id(payload, "locationId");
+    const bool move = action == "MoveTo";
+    const bool valid_payload = move ? has_exact_keys(payload, {"action", "characterId", "locationId"})
+        : has_exact_keys(payload, {"action", "characterId"});
+    if (!valid_payload || action.empty() || character.empty() || (move && location.empty())) {
         error("INVALID_MESSAGE");
         return deliveries;
     }
@@ -207,7 +276,7 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
     };
     const auto cached = std::ranges::find(connection.commands, request_id, &CachedCommand::request_id);
     if (cached != connection.commands.end()) {
-        if (cached->action == action && cached->character == character) {
+        if (cached->action == action && cached->character == character && cached->location == location) {
             send_result(*cached);
         } else {
             error("REQUEST_ID_REUSED");
@@ -215,20 +284,21 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
         return deliveries;
     }
 
-    const auto rejection = host_.execute(*connection.session, *kind, character);
+    const auto outcome = host_.execute(*connection.session, *kind, character, location);
+    const auto rejection = outcome ? std::nullopt : std::optional{outcome.error()};
     if (connection.commands.size() == command_history_size) {
         connection.commands.pop_front();
     }
     const auto& result = connection.commands.emplace_back(
-        std::string(request_id), std::string(action), std::string(character), rejection,
-        host_.view(*connection.session).revision);
+        std::string(request_id), std::string(action), std::string(character), std::string(location),
+        rejection, host_.revision());
     send_result(result);
     publish_changes(deliveries);
     return deliveries;
 }
 
 Deliveries Endpoint::tick() {
-    host_.advance();
+    static_cast<void>(host_.advance());
     Deliveries deliveries;
     publish_changes(deliveries);
     return deliveries;

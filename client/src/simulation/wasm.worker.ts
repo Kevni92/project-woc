@@ -5,6 +5,7 @@ import type { WorkerAttach, WorkerRequest, WorkerResponse } from './wasm-channel
 
 const worker = self as DedicatedWorkerGlobalScope;
 type Start = { type: 'start'; clock: 'realtime' | 'manual' };
+type Tick = { type: 'tick' };
 type Delivery = { connection: number; message: string };
 const ports = new Map<number, MessagePort>();
 const encoder = new TextEncoder();
@@ -13,6 +14,7 @@ let nextConnection = 1;
 let initializing: Promise<WocModule> | null = null;
 let timer: ReturnType<typeof setInterval> | undefined;
 let failed = false;
+let clock: Start['clock'];
 
 function fail(): void {
   if (failed) return;
@@ -70,9 +72,10 @@ function attach(runtime: WocModule, port: MessagePort): void {
   port.postMessage({ type: 'ready' } satisfies WorkerResponse);
 }
 
-worker.onmessage = (event: MessageEvent<Start | WorkerAttach>) => {
+worker.onmessage = (event: MessageEvent<Start | WorkerAttach | Tick>) => {
   const request = event.data;
   if (request.type === 'start' && !initializing) {
+    clock = request.clock;
     initializing = createWoc({ locateFile: () => wasmUrl });
     void initializing.then(runtime => {
       if (request.clock === 'realtime') {
@@ -88,5 +91,10 @@ worker.onmessage = (event: MessageEvent<Start | WorkerAttach>) => {
     }).catch(fail);
   } else if (request.type === 'attach' && initializing) {
     void initializing.then(runtime => attach(runtime, request.port)).catch(fail);
+  } else if (request.type === 'tick' && clock === 'manual' && initializing) {
+    void initializing.then(runtime => {
+      runtime._woc_tick();
+      deliver(runtime);
+    }).catch(fail);
   }
 };

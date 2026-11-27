@@ -62,7 +62,7 @@ class WasmTransport implements Transport {
   }
 }
 
-export function createWasmTransportFactory(clock: 'realtime' | 'manual' = 'realtime'): TransportFactory {
+function createWasmHost(clock: 'realtime' | 'manual') {
   let worker: Worker | null = null;
   const clients = new Set<FailureListener>();
   const attach: AttachPort = (port, onFailure) => {
@@ -91,5 +91,16 @@ export function createWasmTransportFactory(clock: 'realtime' | 'manual' = 'realt
     clients.add(onFailure);
     return () => { clients.delete(onFailure); };
   };
-  return () => new WasmTransport(attach);
+  return {
+    factory: () => new WasmTransport(attach),
+    tick: () => worker?.postMessage({ type: 'tick' }),
+  };
+}
+
+export function createWasmTransportFactory(): TransportFactory {
+  return createWasmHost('realtime').factory;
+}
+
+export function createManualWasmHost(): { factory: TransportFactory; tick: () => void } {
+  return createWasmHost('manual');
 }

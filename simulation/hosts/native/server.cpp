@@ -10,6 +10,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <thread>
 
 namespace {
 
@@ -20,6 +21,8 @@ using asio::ip::tcp;
 using beast::error_code;
 using woc::protocol::ConnectionId;
 using woc::protocol::Deliveries;
+
+enum class ClockMode { realtime, frozen, stdin_ticks };
 
 class Peer;
 
@@ -49,6 +52,10 @@ public:
         deliver(endpoint_.receive(id, message));
     }
 
+    void tick() {
+        deliver(endpoint_.tick());
+    }
+
 private:
     void accept();
     void deliver(Deliveries messages);
@@ -57,7 +64,7 @@ private:
         timer_.expires_after(std::chrono::seconds(1));
         timer_.async_wait([this](error_code error) {
             if (!error) {
-                deliver(endpoint_.tick());
+                tick();
                 schedule_tick();
             }
         });
@@ -179,11 +186,13 @@ void Server::deliver(Deliveries messages) {
 
 int main(int argc, char** argv) {
     unsigned short port = 8765;
-    bool manual_clock = false;
+    ClockMode clock = ClockMode::realtime;
     for (int i = 1; i < argc; ++i) {
         const std::string_view argument = argv[i];
         if (argument == "--manual-clock") {
-            manual_clock = true;
+            clock = ClockMode::frozen;
+        } else if (argument == "--manual-clock-stdin") {
+            clock = ClockMode::stdin_ticks;
         } else if (argument == "--port" && i + 1 < argc) {
             const std::string_view value = argv[++i];
             const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), port);
@@ -192,18 +201,29 @@ int main(int argc, char** argv) {
                 return 1;
             }
         } else {
-            std::cerr << "Usage: woc_server [--port PORT] [--manual-clock]\n";
+            std::cerr << "Usage: woc_server [--port PORT] [--manual-clock | --manual-clock-stdin]\n";
             return 1;
         }
     }
 
     try {
         asio::io_context io;
-        asio::signal_set signals(io, SIGINT, SIGTERM);
-        signals.async_wait([&io](error_code, int) { io.stop(); });
-        Server server(io, port, manual_clock);
+        Server server(io, port, clock != ClockMode::realtime);
         std::cout << "ws://127.0.0.1:" << server.port() << '\n' << std::flush;
-        io.run();
+        if (clock == ClockMode::stdin_ticks) {
+            // The contract harness drives time over stdin. WebSocket peers
+            // have the same command set in both clock modes.
+            std::thread network([&io] { io.run(); });
+            for (std::string line; std::getline(std::cin, line);) {
+                if (line == "tick") asio::post(io, [&server] { server.tick(); });
+            }
+            asio::post(io, [&io] { io.stop(); });
+            network.join();
+        } else {
+            asio::signal_set signals(io, SIGINT, SIGTERM);
+            signals.async_wait([&io](error_code, int) { io.stop(); });
+            io.run();
+        }
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

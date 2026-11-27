@@ -1,5 +1,6 @@
+import city from '../../../content/breakwater.json';
 import { decodeServer, PROTOCOL_VERSION } from './protocol';
-import type { Command, CommandResult, Request, ServerMessage, View } from './protocol';
+import type { Command, CommandResult, Request, RoutePreviewResult, ServerMessage, View } from './protocol';
 import type { Transport, TransportFactory } from './transport';
 import { applyDelta, fromSnapshot } from './view-store';
 
@@ -11,7 +12,7 @@ export interface ClientState {
   readonly error: string | null;
 }
 
-type ReplyType = 'Welcome' | 'CommandResult' | 'Snapshot';
+type ReplyType = 'Welcome' | 'CommandResult' | 'RoutePreviewResult' | 'Snapshot';
 type Reply = Extract<ServerMessage, { type: ReplyType }>;
 type PendingReply = {
   expected: ReplyType;
@@ -97,6 +98,15 @@ export class SimulationClient {
     return this.sendCommand({ action: 'ReleaseCharacter', characterId });
   }
 
+  moveTo(characterId: string, locationId: string): Promise<CommandResult> {
+    return this.sendCommand({ action: 'MoveTo', characterId, locationId });
+  }
+
+  async previewRoute(characterId: string, locationId: string): Promise<RoutePreviewResult> {
+    const reply = await this.exchange({ type: 'RoutePreview', payload: { characterId, locationId } }, 'RoutePreviewResult');
+    return reply.payload;
+  }
+
   async requestSnapshot(): Promise<View> {
     const message = await this.exchange({ type: 'SnapshotRequest', payload: {} }, 'Snapshot');
     return fromSnapshot(message);
@@ -152,8 +162,9 @@ export class SimulationClient {
     let message: ServerMessage;
     try {
       message = decodeServer(wire);
-    } catch {
-      this.stop(new Error('INVALID_SERVER_MESSAGE'));
+    } catch (error) {
+      this.stop(new Error(error instanceof Error && error.message === 'UNSUPPORTED_VERSION'
+        ? 'UNSUPPORTED_VERSION' : 'INVALID_SERVER_MESSAGE'));
       return;
     }
     if (message.streamSeq <= this.lastSequence) return;
@@ -164,6 +175,15 @@ export class SimulationClient {
     switch (message.type) {
       case 'Welcome':
         if (this.pending.get(requestId)?.expected === 'Welcome') {
+          const { worldId, contentVersion, capabilities } = message.payload;
+          if (worldId !== city.id || contentVersion !== city.version) {
+            this.stop(new Error('INCOMPATIBLE_CITY_CONTENT'));
+            return;
+          }
+          if (!capabilities.includes('FootTravel')) {
+            this.stop(new Error('MISSING_FOOT_TRAVEL'));
+            return;
+          }
           this.publish({ ...this.state, sessionId: message.payload.sessionId });
           this.complete(requestId, message);
         }
@@ -187,6 +207,7 @@ export class SimulationClient {
         return;
       }
       case 'CommandResult':
+      case 'RoutePreviewResult':
         this.complete(requestId, message);
         break;
       case 'Error': {

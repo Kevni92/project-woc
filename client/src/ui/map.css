@@ -228,6 +228,8 @@
   .clear-selection { background: transparent; color: var(--atlas-muted); border-color: transparent; padding: 0 .3rem; font-size: 1.2rem; }
   .map-details h2 { font-size: 1.35rem; letter-spacing: -.03em; }
   .detail-meta, .detail-description { color: var(--atlas-muted); font-size: .8rem; }
+  .route-preview { margin-top: .65rem; }
+  .travel-arrival { padding: .75rem 1.2rem; border-bottom: 1px solid var(--atlas-border); font-size: .85rem; }
   .detail-description { margin-top: .6rem; }
   .character-details { margin-top: .55rem; }
   .character-details > div { display: flex; justify-content: space-between; gap: .6rem; }

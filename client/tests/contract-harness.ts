@@ -3,24 +3,33 @@ import type { ServerMessage } from '../src/simulation/protocol';
 import { SimulationClient } from '../src/simulation/simulation-client';
 import type { ClientState } from '../src/simulation/simulation-client';
 import type { Transport, TransportFactory } from '../src/simulation/transport';
-import { createWasmTransportFactory } from '../src/simulation/wasm-transport';
+import { createManualWasmHost } from '../src/simulation/wasm-transport';
 import { WebSocketTransport } from '../src/simulation/websocket-transport';
 
 export type Mode = 'wasm' | 'ws';
 export type Frame =
   | { op: 'open' | 'close'; connection: number }
-  | { op: 'send'; connection: number; message: unknown };
+  | { op: 'send'; connection: number; message: unknown }
+  | { op: 'tick' };
 export type Delivery = { connection: number; message: ServerMessage };
 
 const connections = new Map<number, Transport>();
 const deliveries: Delivery[] = [];
 let factory: TransportFactory;
+let tick: (() => void) | undefined;
 
 export function start(mode: Mode, url: string): void {
-  factory = mode === 'wasm' ? createWasmTransportFactory('manual') : () => new WebSocketTransport(url);
+  const wasm = mode === 'wasm' ? createManualWasmHost() : undefined;
+  factory = wasm?.factory ?? (() => new WebSocketTransport(url));
+  tick = wasm?.tick;
 }
 
 export async function apply(frame: Frame): Promise<void> {
+  if (frame.op === 'tick') {
+    if (!tick) throw new Error('Manual WASM host required');
+    tick();
+    return;
+  }
   const { connection } = frame;
   if (frame.op === 'open') {
     const transport = factory();
@@ -54,7 +63,8 @@ export async function simulateGap(): Promise<void> {
     open: listener => transport.open({
       closed: listener.closed,
       message: wire => {
-        if (dropDelta && decodeServer(wire).type === 'Delta') {
+        const message = decodeServer(wire);
+        if (dropDelta && message.type === 'Delta' && message.payload.controlled?.travel) {
           dropDelta = false;
         } else {
           listener.message(wire);
@@ -70,7 +80,7 @@ export async function simulateGap(): Promise<void> {
   client.subscribe(value => { state = value; });
   await client.connect();
   const control = await client.acquireCharacter('resident-ada');
-  const action = await client.sendCommand({ action: 'TestAction', characterId: 'resident-ada' });
+  const action = await client.moveTo('resident-ada', 'workshop');
   if (!control.accepted || !action.accepted) throw new Error('Rejected fixture command');
 }
 

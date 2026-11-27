@@ -26,22 +26,25 @@ describe('city definition', () => {
     expect(city.locations.length).toBeGreaterThanOrEqual(6);
     expect(city.buildings.length).toBeGreaterThanOrEqual(30);
     expect(city.buildings.length).toBeLessThanOrEqual(50);
-    for (const actor of [[0, 0], [10, 5], [4, 2], [5, 2], [6, 2]] as const) {
+    for (const actor of [[0, 0], [10, 4], [4, 4], [134, 4]] as const) {
       expect(city.land.some(outline => contains(outline, actor))).toBe(true);
       expect(city.buildings.some(building => contains(building.footprint, actor))).toBe(false);
     }
     for (const location of city.locations) {
       expect(city.land.some(outline => contains(outline, location.position))).toBe(true);
+      expect(city.navigation.nodes.some(node => node.id === location.access)).toBe(true);
     }
   });
 
   test('rejects bad bounds, duplicate IDs, invalid geometry and broken references', () => {
-    expect(() => parseCity({ ...definition, version: 2 })).toThrow('Kartenformat');
+    expect(() => parseCity({ ...definition, version: 1 })).toThrow('Kartenformat');
     expect(() => parseCity({ ...definition, start: [9999, 0] })).toThrow('Kartengrenzen');
     expect(() => parseCity({ ...definition, roads: [...definition.roads, definition.roads[0]] })).toThrow('Karten-ID');
     expect(() => parseCity({ ...definition, greens: [[[1, 2], [2, 4], [3, 6]]] })).toThrow('Fläche');
     expect(() => parseCity({ ...definition, locations: [{ ...definition.locations[0], building: 'missing' }] }))
       .toThrow('Kartenreferenz');
+    expect(() => parseCity({ ...definition, locations: [{ ...definition.locations[0], access: 'missing' }] }))
+      .toThrow('Wegenetzreferenz');
   });
 });
 
@@ -101,12 +104,16 @@ test('projects only the current public characters and private control state', ()
   const state: ClientState = {
     status: 'connected', sessionId: 's1', synchronizing: false, error: null,
     view: {
-      revision: 4, worldTick: 2, gameMinutes: 482, controlled: { id: 'ada', cash: 110 },
+      revision: 4, worldTick: 2, gameMinutes: 482, snapshotSequence: 2,
+      controlled: { id: 'ada', cash: 100, positionRevision: 2, locationId: null, travel: {
+        locationId: 'market', startTick: 1, progressMm: 66666, remainingTicks: 1,
+        route: { distanceMm: 125000, durationTicks: 2, points: [{ x: 0, z: 0 }, { x: 89, z: -28 }], edgeIds: ['path-market-01'] },
+      } },
       characters: [
-        { id: 'ada', name: 'Ada', position: { x: 1, z: 0 }, eligible: true, occupied: true },
-        { id: 'ben', name: 'Ben', position: { x: 10, z: 5 }, eligible: true, occupied: false },
-        { id: 'kim', name: 'Kim', position: { x: 20, z: 10 }, eligible: true, occupied: true },
-        { id: 'npc', name: 'Passant', position: { x: 6, z: 2 }, eligible: false, occupied: false },
+        { id: 'ada', name: 'Ada', position: { x: 1, z: 0 }, eligible: true, occupied: true, status: 'Traveling' },
+        { id: 'ben', name: 'Ben', position: { x: 10, z: 4 }, eligible: true, occupied: false, status: 'Idle' },
+        { id: 'kim', name: 'Kim', position: { x: 20, z: 10 }, eligible: true, occupied: true, status: 'Idle' },
+        { id: 'npc', name: 'Passant', position: { x: 6, z: 2 }, eligible: false, occupied: false, status: 'Traveling' },
       ],
     },
   };
@@ -115,12 +122,15 @@ test('projects only the current public characters and private control state', ()
   expect(projected.controlled).toMatchObject({ id: 'ada', position: [1, 0] });
   expect(projected.markers[3].position).toEqual([6, 2]);
   expect(projected.markers.every(marker => !Object.hasOwn(marker, 'cash'))).toBe(true);
-  expect(projected.cash).toBe(110);
+  expect(projected.cash).toBe(100);
+  expect(projected.travel?.remainingTicks).toBe(1);
   expect(projected.canCommand).toBe(true);
   expect(projectMap(state, true).canCommand).toBe(false);
   for (const unavailable of [
     { ...state, synchronizing: true }, { ...state, status: 'disconnected' } as const,
   ]) {
-    expect(projectMap(unavailable)).toMatchObject({ canCommand: false, markers: [], cash: undefined, controlled: undefined });
+    expect(projectMap(unavailable)).toMatchObject({
+      canCommand: false, markers: [], cash: undefined, controlled: undefined, travel: undefined,
+    });
   }
 });
