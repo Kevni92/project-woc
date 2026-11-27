@@ -1,0 +1,3 @@
+# P1-003 — NPC-Entscheidungen und Ambient-Population
+Status: geplant, noch nicht umsetzungsreif; nach P1-002 konkretisieren.
+Ziel: Residents reagieren auf einfache Bedürfnisse/Attribute und Weltzustand, statt ausschließlich starrer Tagespläne. Reproduzierbare Entscheidungsregeln, gemeinsame fachliche Actions mit Spielersteuerung, Ambient-Passanten mit günstigeren Bewegungs-/Aktivitätsdaten, nicht übernehmbar. Simulationstiefe von Berechnungsfrequenz trennen; Kamera/Zoom verändert keine Regeln. Messbare kleine Lasttests statt willkürlicher Population oder Multithreading. Keine vollständige Utility-AI, Wirtschaft, Beziehungen-Simulation oder großflächige Optimierung vor Profiling. Vor Umsetzung genaue Regeln/Abnahme spezifizieren.

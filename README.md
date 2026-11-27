@@ -74,5 +74,8 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [Arbeitsweise](docs/workflow.md) | Konzept- und KI-Implementierungsprozess |
 | [P0-001](tasks/P0-001-map-prototype.md) | Interaktive Karte |
 | [P0-002](tasks/P0-002-dual-runtime.md) | Native/WASM-Simulation mit identischem Protokoll |
+| [P1-001](tasks/P1-001-movement.md) | Autoritatives Wegenetz und Fußreisen (nächster Task) |
+| [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
+| [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 
 Starte eine KI-Sitzung mit dem Repository-Link und der Anweisung, AGENTS.md zu lesen.
