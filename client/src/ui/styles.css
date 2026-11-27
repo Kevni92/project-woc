@@ -1,0 +1,46 @@
+@layer base, components;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --canvas: #131716;
+    --panel: #1c2320;
+    --border: #35433b;
+    --text: #f0f3ef;
+    --muted: #aabbb1;
+    --accent: #cef38c;
+    --danger: #ffc3ad;
+    font: 1rem/1.5 system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--text);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  h1, h2, p, dl, dd { margin: 0; }
+  h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); line-height: 1.12; }
+  h2 { font-size: 1.125rem; }
+  button { font: inherit; }
+}
+
+@layer components {
+  main { max-width: 76rem; margin-inline: auto; padding: clamp(1rem, 5vw, 4rem); }
+  header { margin-bottom: 2rem; }
+  .project-name { color: var(--accent); font-weight: 650; margin-bottom: .35rem; }
+  .sessions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr)); gap: 1rem; }
+  .session { background: var(--panel); border: 1px solid var(--border); border-radius: .8rem; padding: 1.15rem; }
+  .session-header, .characters li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .65rem; }
+  .status, dt, .characters p { color: var(--muted); font-size: .875rem; }
+  .world { display: flex; flex-wrap: wrap; gap: 1.5rem; padding-block: .85rem; margin-top: 1rem; border-block: 1px solid var(--border); }
+  .world dd { font-variant-numeric: tabular-nums; }
+  .characters { list-style: none; padding: 0; margin: 0; }
+  .characters li { padding-block: .85rem; border-bottom: 1px solid var(--border); }
+  .actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+  button { color: var(--text); border: 1px solid var(--border); background: var(--canvas); border-radius: .4rem; padding: .35rem .65rem; cursor: pointer; }
+  button:is(:hover, :focus-visible):enabled { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent); color: var(--canvas); font-weight: 650; }
+  .snapshot { margin-top: .9rem; }
+  .error { color: var(--danger); padding-top: .7rem; overflow-wrap: anywhere; }
+}
