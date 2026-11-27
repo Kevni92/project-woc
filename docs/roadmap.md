@@ -1,5 +1,5 @@
 # Roadmap
-Status 27.11.2026: P0-001, P0-002, P1-001, P1-004, P1-005 und P1-006 implementiert und laut Aufgabenprotokollen getestet. P1-007 laut Nutzer in lokaler Bearbeitung; kein abgeschlossener Implementierungsstand in main bestätigt. Die folgenden Aufgaben sind geplant, keine Implementierungsergebnisse.
+Status 27.11.2026: P0-001, P0-002, P1-001, P1-004, P1-005, P1-006 und P1-007 sind implementiert und laut Aufgabenprotokollen getestet. Die folgenden Aufgaben sind geplant, keine Implementierungsergebnisse.
 
 | ID | Ziel | Abnahmekriterium | Status |
 |---|---|---|---|
@@ -9,7 +9,7 @@ Status 27.11.2026: P0-001, P0-002, P1-001, P1-004, P1-005 und P1-006 implementie
 | [P1-004](../tasks/P1-004-map-visual-upgrade.md) | Weltkarte 2.0 | Fullscreen-HUD, Rotation, Visualformat, Gebäude/Küste/Straßen | erledigt |
 | [P1-005](../tasks/P1-005-world-package-loader.md) | Kartenpakete | Breakwater und Cove ohne Neubuild nativ/WASM/Browser | erledigt |
 | [P1-006](../tasks/P1-006-osm-world-importer.md) | Geodatenimport | Offline-OSM, City-v3, Natural/Island; 1×1 und 5×5 km gemessen, dichter Ausschnitt am Byte-Limit | erledigt |
-| [P1-007](../tasks/P1-007-world-studio.md) | World Studio Karteneditor | Auswahl, Import, Vorschau, validierter Export und Spielstart | in Arbeit (Nutzerangabe) |
+| [P1-007](../tasks/P1-007-world-studio.md) | World Studio Karteneditor | Auswahl, Import, Vorschau, validierter Export und Spielstart | erledigt |
 | [P1-008](../tasks/P1-008-realtime-clock-motion.md) | Echtzeit und flüssige Bewegung | 1×-Uhr, Debug-Faktor, kontinuierliche Marker entlang Hostroute, native/WASM-Parität | als Nächstes geplant |
 | [P1-002](../tasks/P1-002-character-routines.md) | Bewohner und Tagespläne | Datengetriebene Residents, Home/Job/Routine, Arbeit/Heimkehr; erster passender Inspector | geplant |
 | [P1-003](../tasks/P1-003-npc-behavior.md) | NPC-Verhalten | Einfache Entscheidungen, Ambient-Population, Messung; gemeinsame Actions | geplant |

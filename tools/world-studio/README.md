@@ -1,6 +1,45 @@
-# OSM-Importer
+# World Studio und OSM-Importer
 
-`woc_osm` erzeugt ein World Package v1 mit City v3 und Visual v2. Dieselbe Funktion steht dem geplanten World Studio zur Verfügung.
+`woc_osm` erzeugt ein World Package v1 mit City v3 und Visual v2. Das separate World Studio verwendet denselben Importer und dieselben Validatoren.
+
+## World Studio
+
+Voraussetzungen sind die nativen und WASM-Builds, `npm --prefix client ci` sowie die Python-Installation unten. Aus der Repository-Wurzel:
+
+```powershell
+npm --prefix tools/world-studio ci
+npm --prefix tools/world-studio run build
+$env:PYTHONPATH = 'tools/world-studio'
+build/osm-venv/Scripts/python.exe -m studio --data build/osm-input --workspace build/world-studio --port 8000
+```
+
+Auf Linux/macOS `build/osm-venv/bin/python` und den passenden nativen Build verwenden. Die Anwendung ist nur unter `http://127.0.0.1:8000` erreichbar. `--data` begrenzt die lesbaren Quellen; PBF und Land-GeoJSON werden relativ zu diesem Verzeichnis angegeben. `--workspace` enthält `projects/` für editierbare JSON-Projekte, `jobs/` für temporäre Importergebnisse und Berichte sowie `exports/` für validierte Laufzeitpakete. IDs sind Kleinbuchstaben, Zahlen und Bindestriche. Ein Export überschreibt keine bestehende Welt. Beim Neustart werden Jobstatus nicht fortgesetzt; Projekte und Exporte bleiben erhalten.
+
+1. In der Karte navigieren oder `Breitengrad, Längengrad` suchen. Die Koordinatensuche benötigt kein Netzwerk. Standardmäßig ist ein leerer Offline-Hintergrund aktiv. Unter **Kartenanbieter und Geocoder** kann eine eigene zulässige MapLibre-Stil-URL und eine Geocoder-URL mit `{query}` konfiguriert werden. Der Geocoder muss ein JSON-Array mit `lat` und `lon` zurückgeben und CORS erlauben. Es gibt keine automatische Suche; Nutzungsbedingungen, Rate Limits und Attribution des gewählten Anbieters sind zu beachten. Keine geheimen Schlüssel in die lokalen Browsereinstellungen eintragen. Vor dem für die Konfiguration nötigen Neuladen das Projekt speichern.
+2. **Rechteck** oder **Freihand** wählen und mit gedrückter linker Maustaste ziehen; Freihand schließt beim Loslassen. Mit **Bearbeiten** kann der Außenring verschoben und über seine Punkte geändert werden. **Auswahl löschen**, GeoJSON-Import/-Download und metrisches Rechteck um die Kartenmitte stehen daneben bereit. Anzeige und Import verwenden metrisch projizierte Fläche und Ausdehnung. Geladene GeoJSON-Innenringe bleiben erhalten und sind gestrichelt markiert; einzelne Innenringe werden in diesem Schnitt nicht im Studio bearbeitet. Beim Verschieben des gesamten Polygons verschieben sie sich mit. Ungültige Geometrie wird abgelehnt.
+3. Projekt-ID, Weltkonfiguration, Quellen und Lizenzangaben eingeben und Projekt speichern. Natural und Island sowie Padding und Seed steuern denselben P1-006-Importer. Lokale Quellen werden weder heruntergeladen noch ins Spielbundle übernommen.
+4. Import starten, Phase und Qualitätsbericht beobachten; ein laufender Job kann abgebrochen werden. Nach erfolgreicher Runtime-Validierung zeigen die Kartenvorschau ihre einzeln schaltbaren Layer und die Spielvorschau den bestehenden Three.js-Renderer. Der Export kopiert nur das validierte Paket; nach Projektänderungen ist ein erneuter Import nötig. Bei Größen- oder Koordinatengrenzen muss die Auswahl bzw. das Padding reduziert werden; die P1-006-Limits werden nicht angehoben.
+5. Für **Im Spiel öffnen** zusätzlich den Game-Client auf `127.0.0.1:5173` starten. Das Studio liefert die exportierten Paketdateien über seine lokale `/worlds/`-Basis; es muss dabei weiterlaufen. Für den nativen WebSocket-Modus `build/native/woc_server.exe --world <Exportpfad>` starten und der Spiel-URL `&transport=ws` hinzufügen. Ein neuer Hoststart ist bei Weltwechsel nötig; ein Neubuild ist nicht nötig.
+
+### Tests
+
+```powershell
+$env:PYTHONPATH = 'tools/world-studio'
+build/osm-venv/Scripts/python.exe -m unittest discover -s tools/world-studio/tests -v
+build/osm-venv/Scripts/python.exe tools/world-studio/tests/fixture.py build/studio-e2e/data/fixture-final
+npm --prefix tools/world-studio run typecheck
+npm --prefix tools/world-studio run build
+```
+
+Für den Browsertest in zwei weiteren Terminals den Studio-Server mit `--data build/studio-e2e/data --workspace build/studio-e2e/workspace --port 8099` und den Game-Client auf Port 5173 starten. Chromium bei Bedarf mit `npm --prefix tools/world-studio exec -- playwright install chromium` installieren. Danach aus der Repository-Wurzel:
+
+```powershell
+$env:WOC_STUDIO_TEST_DATA = '../../build/studio-e2e/data'
+$env:WOC_STUDIO_TEST_EXPORTS = '../../build/studio-e2e/workspace/exports'
+npm --prefix tools/world-studio run test:e2e
+```
+
+Der Test erzeugt eigene Projekt- und Welt-IDs und prüft Offline-Auswahl, Projekt, Import, Abbruch, Fehler, Vorschau, Export und beide Hosts. Für den optionalen realen Bremen-Test muss das Datenverzeichnis zusätzlich die unter **Bremer Messläufe** beschriebenen Dateien enthalten; `WOC_STUDIO_REAL_INPUT=1` aktiviert ihn. Die Ergebnisse dieses Tasks sind in [P1-007](../../tasks/P1-007-world-studio.md) dokumentiert.
 
 ## Installation
 

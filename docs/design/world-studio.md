@@ -1,5 +1,5 @@
 # WOC World Studio — lokales Entwicklerwerkzeug
-Status. Der Offline-CLI-Importer ist mit P1-006 implementiert. Die separate Entwickleranwendung mit Rechteck- und Freihandauswahl ist für P1-007 vorgesehen.
+Status. Der Offline-CLI-Importer ist mit P1-006 implementiert. P1-007 ergänzt die separate lokale Entwickleranwendung mit Rechteck- und Freihandauswahl, Jobsteuerung, Vorschau und Export. [Ergebnis und Grenzen](../../tasks/P1-007-world-studio.md)
 Siehe [World Package](../architecture/world-package.md), [Kartenformat](../architecture/map-format.md).
 
 ## Anwendung
@@ -7,11 +7,12 @@ Separates tools/world-studio/ mit Svelte 5/TypeScript/Vite, MapLibre GL JS für 
 MapLibre ist Darstellung, nicht Datenprovider. Konfigurierbarer rechtmäßig nutzbarer Kartenstil/Tiles; keine Google-Maps-Kacheln als Rohdaten. Suchfeld per konfigurierbarem, zulässigem Geocoder oder lokalem Index; Koordinaten/BBox-Eingabe und Navigation ohne Geocoder funktionieren immer. Öffentliche Nominatim-Instanz nicht als generischen automatisierten Suchdienst einbauen; Providerbedingungen, Attribution, Rate Limits/Cache einhalten. Keine Bulk-Tile-Downloads.
 
 ## UX
+Die folgende Zielbeschreibung enthält auch spätere Optionen; der tatsächlich implementierte Umfang und seine Grenzen stehen in [P1-007](../../tasks/P1-007-world-studio.md).
 1. Karte öffnen, Stadt/Koordinaten suchen, zoomen.
 2. Auswahlmodus Pan, Rechteck ziehen, exakte Breite/Höhe in Metern (z.B. 5000×5000), Freihand (linke Maus gedrückt ziehen, beim Loslassen schließen), Polygon per Klick optional. Zeichenmodus deaktiviert Pan während Geste; Undo/Redo bzw. Edit/Delete/Clear. Freihand glätten/vereinfachen mit metrischer Toleranz, Selbstüberschneidung/ungültige Form anzeigen, keine unbemerkte große Flächenänderung. Karte zeigt Maske, real projizierte Fläche, Breite/Höhe und Warnungen; Form editierbar. Originalauswahl und wirksames Polygon als WGS84 GeoJSON speichern (geschlossener Ring, lon/lat), interne Spielkoordinaten getrennt.
 3. Einstellungen: World-ID/Name, Maßstab (MVP 1:1, später Kompression), Seed, Randmodus, Ozean-Padding, Datenquelle und lokaler PBF, Feature-Layer (Gebäude, Straßen, Wege, Parks, Wasser, Strände, POIs; Land/Graph für spielbare Welt nicht deaktivierbar), Höhen-Fallback, gewünschte Spawn-/Startposition und POI-Auswahl, optional manuelles Mapping. Keine echten Bewohner/Privatdaten importieren; Gameplay-POIs kuratieren.
 4. Import/Generierung starten, Fortschritt (Download, Decode, Clip, Graph, Visuals, Validate, Export), cancel, wiederholbar aus Cache; Bericht mit Counts, fehlenden Höhen, abgeschnittenen Gebäuden, ausgeschlossenen Straßen/POIs, getrennten Komponenten und Quellenhinweisen.
-5. Vorschau: importierte Vektorgeometrie/Graph/Ortszugänge und Masken, Toggle für einzelne Layer, Warnungen auf Karte; später/bei Integration gemeinsame Three.js-Spielvorschau über WorldPackageLoader, ohne simulierte Spielzustände zu erfinden. Export nur bei bestandener Validierung; Paket lokal speichern, Pfad anzeigen; aktive Welt nicht überschreiben.
+5. Vorschau: importierte Vektorgeometrie und Graph, Toggle für einzelne Layer und Qualitätsbericht; gemeinsame Three.js-Spielvorschau über WorldPackageLoader, ohne simulierte Spielzustände zu erfinden. Export nur bei bestandener Validierung und unverändertem Projekt; Paket lokal speichern, Pfad anzeigen; aktive Welt nicht überschreiben. Ortszugänge und Warnungen direkt auf der Karte bleiben spätere Erweiterungen.
 6. Spielstart mit exportiertem Paket in WASM oder nativ. Breakwater bleibt unverändert verfügbar.
 
 ## Auswahl und Außenbereich

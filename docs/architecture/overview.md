@@ -52,7 +52,7 @@ Manifest und Karten-JSON liegen in laufzeitladbaren Paketen. Der gemeinsame C++-
 
 ## Offline-Weltimport
 
-P1-006 erzeugt validierte City-v3-Pakete über eine lokale Python-Pipeline. Sie exportiert metrische Geometrie und den Fußgraphen. Der gemeinsame Simulationskern berechnet darauf Routenvorschau, Reise und Ankunft. P1-007 bindet die Importfunktion in den geplanten Karteneditor ein. [World Studio](../design/world-studio.md)
+P1-006 erzeugt validierte City-v3-Pakete über eine lokale Python-Pipeline. Sie exportiert metrische Geometrie und den Fußgraphen. Der gemeinsame Simulationskern berechnet darauf Routenvorschau, Reise und Ankunft. P1-007 startet denselben Importer als abbrechbaren lokalen Job aus einem separaten Svelte-/MapLibre-/Terra-Draw-Studio. Das FastAPI-Backend bindet an Loopback, prüft Host und Origin und begrenzt Quellen und Exporte auf konfigurierte Verzeichnisse. Editierbare versionierte Projekte, temporäre Jobs und validierte Laufzeitpakete sind getrennt. Die Vorschau verwendet den bestehenden Paketloader und Three.js-Renderer; Studio-Code ist nicht im Spielbundle. [World Studio](../design/world-studio.md) · [Bedienung](../../tools/world-studio/README.md#world-studio)
 
 ## Langfristige Content-Engine
 C++ interpretiert dynamisch geladene, versionierte Definitionen und Startinstanzen; World Studio wird später modularer Content-Editor. Generische typisierte Mechanikhandler und deklarative Bedingungen/Effekte statt hartcodierter Spielinhalte. Siehe [Game Content](game-content.md). Kartenloader/Importer/Studio bleiben zunächst im bisherigen Umfang, keine vollständige Regel-Engine vorziehen.

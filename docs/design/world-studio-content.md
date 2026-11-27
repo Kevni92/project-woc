@@ -29,7 +29,7 @@ Kartengenerator zuerst vollständig nutzbar machen. In dessen Code lediglich get
 Die Phasen orientieren sich am jeweiligen Runtime-Meilenstein, keine unabhängige vorgezogene Editor-Suite.
 | Spielphase | World-Studio-Ausbau |
 |---|---|
-| P1-007 | Geografie, Kartenimport, Vorschau, Export (laufender Auftrag; unveränderter Umfang). |
+| P1-007 | Geografie, Kartenimport, Vorschau, Export (implementiert; siehe [Abnahme](../../tasks/P1-007-world-studio.md)). |
 | P1-008 | Kein neuer Studio-Editor erforderlich; Zeit-/Debug-Regeln im Game, später exportierbare Balancingparameter. |
 | P1-002/003 | Resident-/Startzustand-Inspector, Wohn-/Arbeitsorte, Routinen, erste tatsächlich unterstützte Attribute/Personality/Needs und Entscheidungskonfiguration. Beziehungskanten erst bei unterstützter Mechanik. |
 | P2.1 | Location-, Item-, Activity- und einfache Mission-Definitionen; Bedingungen, Ziele, Effekte, Belohnung, Startgeld/Inventar, Referenzvalidator. |

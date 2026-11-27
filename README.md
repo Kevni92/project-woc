@@ -2,7 +2,7 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand.** Breakwater und Cove sind als laufzeitladbare Kartenpakete verfügbar. Der lokale OSM-Importer erzeugt City-v3-Pakete aus einem PBF, Landpolygonen und einer frei geformten Auswahl. Karte und Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host. [Import und Messungen](tasks/P1-006-osm-world-importer.md)
+**Stand.** Breakwater und Cove sind als laufzeitladbare Kartenpakete verfügbar. Der lokale OSM-Importer erzeugt City-v3-Pakete aus einem PBF, Landpolygonen und einer frei geformten Auswahl. World Studio stellt dafür eine eigenständige lokale Kartenoberfläche bereit. Karte und Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host. [Import und Messungen](tasks/P1-006-osm-world-importer.md) · [World Studio](tools/world-studio/README.md)
 
 ## Lokal bauen und starten
 
@@ -62,6 +62,19 @@ npm.cmd --prefix client run test:e2e -- --workers=1
 
 Der Importer prüft das Paket vor dem Export mit denselben Loadern wie CLI, Browser und WASM. Die Testwelt lädt im nativen Host mit `--world build/osm-worlds/osm-fixture`. Für eigene PBF- und Landquellen, Browserstart und Bremer Messläufe siehe die [Importanleitung](tools/world-studio/README.md).
 
+### World Studio starten
+
+Nach den nativen und WASM-Builds sowie der oben beschriebenen Python-Installation:
+
+```powershell
+npm --prefix tools/world-studio ci
+npm --prefix tools/world-studio run build
+$env:PYTHONPATH = 'tools/world-studio'
+build/osm-venv/Scripts/python.exe -m studio --data build/osm-input --workspace build/world-studio
+```
+
+Das Studio öffnet sich unter [127.0.0.1:8000](http://127.0.0.1:8000). Eingabedateien liegen unter dem gewählten Datenverzeichnis; Projekte, Jobdaten und Exporte liegen getrennt im Workspace. Die Basiskarte ist zunächst offline und ohne Kacheln; ein zulässiger Kartenstil und ein Geocoder können im Studio konfiguriert werden. Für die Spielschaltfläche muss der Client zusätzlich auf Port 5173 laufen. [Bedienung und Tests](tools/world-studio/README.md#world-studio)
+
 ### Karte bedienen
 
 Die Karte verbindet beim ersten Öffnen automatisch. Linkes Ziehen und die Pfeiltasten verschieben den Ausschnitt. Mausrad, Zwei-Finger-Geste oder Plus/Minus zoomen. Rechtes Ziehen, Umschalt + linkes Ziehen, Q/E und die Drehtasten rotieren die Karte. N und der Kompass richten sie nach Norden aus. Die Fokustaste zentriert den eigenen Charakter oder den Startbereich. Die Übersichtstaste oder Pos1 setzt den Ausschnitt und die Nordausrichtung zurück.
@@ -111,7 +124,7 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 | [World Package](docs/architecture/world-package.md) | Laufzeitladbare Kartenpakete |
-| [World Studio](docs/design/world-studio.md) | Offline-Importer und geplanter lokaler Geodateneditor |
+| [World Studio](docs/design/world-studio.md) | Offline-Importer und lokaler Geodateneditor |
 | [Studio-Content](docs/design/world-studio-content.md) | Langfristige modulare Gameplay-Editoren |
 | [Game Content](docs/architecture/game-content.md) | Datengetriebene Definitionen, Initialzustand und Regelinterpreter |
 | [P1-005](tasks/P1-005-world-package-loader.md) | Paketloader für native Anwendung, WASM und Browser |
