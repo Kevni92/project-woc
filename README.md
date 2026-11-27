@@ -2,7 +2,59 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand:** Konzeptphase; noch kein ausführbares Spiel. Erster Meilenstein: P0 interaktive Stadtkarte; danach P0-002 vertikaler C++/WASM/native Kommunikationsprototyp.
+**Stand:** P0-002 ist als ausführbarer Dual-Runtime-Prototyp umgesetzt. Der Debug-Client läuft lokal mit WebAssembly im Browser oder mit einem nativen Loopback-WebSocket-Host. Die interaktive Karte ist in P0-001 geplant.
+
+## Lokal bauen und starten
+
+Benötigt werden CMake ab 3.25, Ninja, ein C++23-Compiler, das Emscripten SDK 4.0.23 und Node.js 22 ab 22.12, 24 oder 26+. CMake lädt nlohmann/json 3.12.0 und für den nativen Build Boost 1.90.0 aus den festgelegten Release-Archiven. `npm ci` installiert die Versionen aus dem Client-Lockfile.
+
+**Windows, nativer Build** im x64 Native Tools Command Prompt für Visual Studio 2022 mit C++-Build-Tools und Windows SDK. Befehle aus der Repository-Wurzel ausführen.
+
+```cmd
+cmake --preset native
+cmake --build --preset native
+ctest --preset native
+```
+
+**Windows, WASM-Build** in einer Eingabeaufforderung. Die ersten drei Befehle sind einmalig. `set EM_LLVM_ROOT=` entfernt im aktuellen Fenster eine eventuell geerbte LLVM-Überschreibung, damit Emscripten seinen eigenen Compiler verwendet.
+
+```cmd
+git clone --depth 1 --branch 4.0.23 https://github.com/emscripten-core/emsdk.git "%USERPROFILE%\Tools\woc-emsdk"
+"%USERPROFILE%\Tools\woc-emsdk\emsdk.bat" install 4.0.23
+"%USERPROFILE%\Tools\woc-emsdk\emsdk.bat" activate 4.0.23
+set EM_LLVM_ROOT=
+call "%USERPROFILE%\Tools\woc-emsdk\emsdk_env.bat"
+cmake --preset wasm
+cmake --build --preset wasm
+```
+
+Auf Linux und macOS die Skripte `./emsdk install 4.0.23`, `./emsdk activate 4.0.23` und `source ./emsdk_env.sh` aus dem SDK verwenden. Danach gelten dieselben CMake-Presets aus der Repository-Wurzel. Der WASM-Build legt den generierten Modulcode und die Binärdatei unter `client/src/generated/` ab.
+
+**Browser-Client** nach dem WASM-Build aus der Repository-Wurzel starten.
+
+```text
+npm --prefix client ci
+npm --prefix client run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+- **WASM** über [127.0.0.1:5173](http://127.0.0.1:5173/). Beide Panels teilen sich einen dedizierten Worker. Jedes Panel meldet sich separat an.
+- **WebSocket** über [127.0.0.1:5173/?transport=ws](http://127.0.0.1:5173/?transport=ws). In einem zweiten Terminal aus der Repository-Wurzel `build\native\woc_server.exe` (Windows) oder `./build/native/woc_server` (Linux/macOS) starten. Standardadresse ist `ws://127.0.0.1:8765`. Für einen anderen Port `woc_server --port PORT` verwenden und die WebSocket-Adresse als URL-kodierten Parameter `ws` übergeben.
+
+In beiden Panels auf **Verbinden** klicken. Jeweils eine Figur übernehmen oder mit beiden Panels um Ada konkurrieren. Die Testaktion ändert Position und persönliches Bargeld. **Snapshot anfordern** lädt die Projektion neu.
+
+## Vertragstests und Browser-Smoke
+
+Nach beiden CMake-Builds und `npm ci` die folgenden Befehle aus der Repository-Wurzel ausführen. Playwright startet Vite auf den Ports 4173 und 4174 sowie bei Bedarf einen nativen Loopback-Host mit dynamisch zugewiesenem Port.
+
+```text
+npm --prefix client run typecheck
+npm --prefix client test
+npm --prefix client run build
+npm --prefix client exec -- playwright install chromium
+npm --prefix client run test:e2e
+```
+
+Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die gemeinsame Fixture und die tatsächlich geprüften Versionen stehen in [P0-002](tasks/P0-002-dual-runtime.md).
 
 ## Dokumentation
 | Datei | Zweck |
@@ -21,4 +73,4 @@ Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiratio
 | [P0-001](tasks/P0-001-map-prototype.md) | Interaktive Karte |
 | [P0-002](tasks/P0-002-dual-runtime.md) | Native/WASM-Simulation mit identischem Protokoll |
 
-Starte eine KI-Sitzung mit dem Repository-Link und der Anweisung, AGENTS.md zu lesen. Keine Frameworks oder Packages sind bisher installiert.
+Starte eine KI-Sitzung mit dem Repository-Link und der Anweisung, AGENTS.md zu lesen.

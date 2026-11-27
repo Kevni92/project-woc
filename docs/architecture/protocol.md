@@ -1,24 +1,35 @@
 # Transportneutraler Simulationsvertrag
-Status: VORGABE für Transportwechsel ohne UI-Umbau; konkrete Nachrichten und Encoding ENTWURF.
+Status: VORGABE für Transportwechsel ohne UI-Umbau. Der hier beschriebene v1-Teilumfang ist in P0-002 IMPLEMENTIERT.
 
-## API
-SimulationClient bietet asynchron Connect/Disconnect, SendCommand, RequestSnapshot, Subscribe (unsubscribe), AcquireCharacter/ReleaseCharacter als fachliche Commands. Verbindungsstatus und Fehler explizit. Transport abstrahiert open, send(message), onMessage, onClose, close. WASM und WebSocket verwenden dieselben Nachrichten und dieselbe Codec-/Schema-Version. Keine synchronen direkten C++-Getters in der UI. Client-Adapter übersetzt Transportfehler in einheitliche Fehler; ViewStore hält nur lesende Projektion. Beide Hosts unterstützen mehrere logische Sessions; Session-Identität wird vom Host zugewiesen, nicht vom untrusted Payload übernommen.
+## Client und Transport
 
-## Wire-Format v1 (Entwurf)
-UTF-8 JSON, eine Nachricht pro WebSocket-Textframe bzw. Worker-Nachricht. Envelope: protocolVersion, type, requestId (für Request/Result), payload; Servernachrichten zusätzlich streamSeq und worldTick wo relevant. IDs als Strings, Geld als ganzzahlige kleinste Einheit im dokumentierten sicheren JSON-Bereich. Schema und gemeinsame Fixtures in protocol/; Version/Capabilities beim Hello aushandeln. Unbekannte inkompatible Version ablehnen. Keine Pointer, C++-Typnamen, JS-Funktionen oder binären Speicherlayoutdetails. Bei Bedarf später versioniertes Binary-Encoding aushandeln.
+`SimulationClient` bietet `connect`, `disconnect`, `sendCommand`, `requestSnapshot`, `subscribe`, `acquireCharacter` und `releaseCharacter`. Aufrufe mit Ergebnis sind asynchron. Abonnenten erhalten Verbindungsstatus, Fehler und eine lesende Projektion. Beide Browseradapter implementieren `open`, `send` und `close` mit Empfangs- und Abbruchcallbacks. Die Adapter transportieren dieselben JSON-Zeichenketten. Jeder WebSocket und jeder MessagePort hat eine eigene Host-Verbindung. Erst `Hello` erzeugt eine logische Session. Die Host-Zuordnung gilt für die Lebensdauer dieser Verbindung.
+
+## Wire-Format v1
+
+UTF-8-JSON. Eine Nachricht pro WebSocket-Textnachricht beziehungsweise Worker-Nachricht. Die Schemas für [Anfragen](../../protocol/client-v1.schema.json) und [Antworten](../../protocol/server-v1.schema.json) definieren die Felder und Typen. Die [Vertragsfixture](../../protocol/fixtures/dual-runtime.json) enthält eine vollständige Befehlsfolge für zwei parallele Verbindungen und eine neue Session nach Disconnect.
 
 | Richtung | Nachrichten |
 |---|---|
-| Client → Host | Hello, Command, SnapshotRequest, SubscriptionUpdate, Ping |
-| Host → Client | Welcome, CommandResult, Snapshot, Delta, PublicEvent, Error, Pong |
+| Client → Host | `Hello`, `Command`, `SnapshotRequest` |
+| Host → Client | `Welcome`, `CommandResult`, `Snapshot`, `Delta`, `Error` |
 
-Commands: AcquireCharacter, ReleaseCharacter, MoveTo, BuyItem, AcceptMission, ChooseMissionOption etc. Command enthält requestId/Command-ID, ggf. Ziel-Character-ID, fachliche Argumente. Session/Steuerrecht wird serverseitig aufgelöst. Result bedeutet accepted/rejected mit maschinenlesbarem Fehler oder Erfolg und Tick/Revision; Annahme einer Reise ist nicht deren Abschluss. Fehler z.B. CHARACTER_BUSY, NOT_CONTROLLER, NOT_ELIGIBLE, INVALID_ACTION, STALE_STATE, INSUFFICIENT_FUNDS. Vertrauliche Daten nur an berechtigte Sessions.
+Jede Anfrage enthält `protocolVersion: 1`, `type`, `requestId` und `payload`. IDs bestehen aus 1–64 ASCII-Zeichen aus `A–Z`, `a–z`, `0–9`, `_` und `-`. Die zulässigen Request-Felder sind abschließend. Der Host weist inkompatible Versionen mit `UNSUPPORTED_VERSION` zurück. Das v1-Protokoll akzeptiert Eingaben bis 4.096 Bytes. Der WebSocket-Adapter beendet die Verbindung bei zu großen oder binären Nachrichten. Der Worker liefert bei zu großen Nachrichten `INVALID_MESSAGE`.
 
-## Lifecycle und Synchronisierung
-Hello → Welcome (Session-ID, Welt-ID, Version, Capabilities) → initialer Snapshot (sichtbare Welt, CharacterSummary, ggf. kontrollierter Character, Revision/Stream-Sequenz) → Deltas/Events. Snapshot und nachfolgende Deltas atomar an einer Sequenzgrenze schneiden. Deltas je Session mit monotoner streamSeq; nicht globale World-Ticks zur Lückenerkennung verwenden. Bei Lücke oder unbekannter Basis Snapshot neu anfordern und Zustand atomar ersetzen. Bounded Queues/Backpressure, Positionsdeltas bündeln oder Snapshot erzwingen; Ergebnisse und Kontrollübergänge nicht still verwerfen. Client rendert zwischen erhaltenen Positionen interpoliert; keine autoritative Vorhersage. Reconnect liefert neue oder serverseitig authentifiziert wiederaufgenommene Session und frischen Snapshot; keine blinde Wiederholung mutierender Commands, begrenzte Deduplikation pro Session/Command-ID.
+`Hello` und `SnapshotRequest` haben einen leeren Payload. `Welcome` liefert `sessionId`, `worldId` und die v1-Fähigkeiten `CharacterControl`, `TestAction` und `SnapshotDelta`. Auf `Welcome` folgt unmittelbar ein initialer `Snapshot` ohne `requestId`. Ein explizit angeforderter Snapshot erhält die Request-ID. `Error` enthält einen maschinenlesbaren Code und bei lesbarer ID die Request-ID. Fachliche Ablehnungen erscheinen in `CommandResult` mit `accepted: false` und `code`.
 
-## Steuerübernahme
-AcquireCharacter ist atomar an der Simulationsgrenze: Existenz, Übernehmbarkeit, Sessionberechtigung und exklusive Lease prüfen; erster zulässiger Command gewinnt, zweiter erhält CHARACTER_BUSY. Maximal ein kontrollierter Charakter je Session und maximal eine Session je Charakter (MVP-Entwurf); Wechsel atomar, alter Charakter bei fehlgeschlagener Übernahme nicht verlieren. Freigabe, Disconnect und optional Timeout lösen Lease und Autonomie aus. Laufende Aktionen, Schulden, Verpflichtungen etc. bleiben weltpersistiert. Native und lokaler Host verwenden dieselbe Control-Registry. Der Host liefert erlaubte Aktionen und Detailprojektionen für den kontrollierten Charakter; Regeln validieren trotzdem jede Ausführung. Keine privaten Daten anderer Charaktere allein aufgrund ihrer Sichtbarkeit.
+## Commands und Steuerübernahme
 
-## Abnahmekriterien
-Gleiche Fixture/Command-Sequenz für native CLI, WASM Worker und native WebSocket-Hosts; semantisch gleiche Ergebnisse und Snapshot-Zustände. Dasselbe Browser-UI über beide Transportadapter. Zwei Sessions konkurrieren um einen Charakter, nur eine erhält Zugriff; nicht autorisierte Aktion abgelehnt; Freigabe ermöglicht Übernahme; Reconnect/Sequenzlücke mit Snapshot. P0-002 enthält nur eine kleine vertikale Testdomäne, keine produktionsreife Online-Sicherheit.
+`Command` erwartet `action` und `characterId`. In P0-002 gibt es `AcquireCharacter`, `ReleaseCharacter` und `TestAction`. Jedes `CommandResult` enthält `accepted` und die Weltrevision zum ursprünglichen Ergebnis. Der Host speichert die letzten 64 Command-Ergebnisse pro Session. Derselbe Command mit derselben Request-ID liefert das gespeicherte Resultat ohne erneute Mutation. Andere Argumente unter einer noch gespeicherten ID ergeben `REQUEST_ID_REUSED`.
+
+Der Host prüft die Existenz des Charakters, seine Übernehmbarkeit und die exklusive Lease. Jede Session kann einen Charakter steuern. Bei einem erfolgreichen Wechsel wird die alte Lease atomar freigegeben. Ein abgelehnter Wechsel lässt die bisherige Lease bestehen. `ReleaseCharacter` und `TestAction` setzen eine eigene Lease voraus. `ReleaseCharacter` und Disconnect lösen die Lease sofort. Die Figur und ihr veränderter Zustand bleiben im laufenden Host erhalten. Der Ambient-Passant ist grundsätzlich nicht übernehmbar.
+
+## Projektion und Synchronisierung
+
+Jede Host-Nachricht hat eine pro Verbindung fortlaufende `streamSeq` und den aktuellen `worldTick`. Snapshot und Delta enthalten die Weltrevision, absolute Spielminuten und die private Projektion `controlled` mit ID und Bargeld oder `null`. Geld wird als Ganzzahl in kleinster Währungseinheit übertragen. Öffentliche Charakterübersichten enthalten ID, Name, Position in lokalen Metern sowie Übernehmbarkeit und Belegung. JSON-Zähler und Geld liegen im sicheren Ganzzahlbereich.
+
+Snapshots ersetzen die Projektion vollständig. Deltas enthalten `baseRevision` und nur geänderte öffentliche Charakterübersichten. Die private Projektion wird mit jedem Delta vollständig ersetzt. Der Client wendet Deltas nur bei lückenloser `streamSeq` und passender Basis an. Bei Abweichungen behält er den letzten konsistenten Stand, fordert einmal pro laufender Wiederherstellung einen Snapshot an und ersetzt den Stand atomar. Neue Verbindungen erhalten eine neue Session und einen frischen Snapshot. Ausstehende Anfragen schlagen bei Disconnect fehl. Mutierende Commands werden beim Reconnect nicht automatisch erneut gesendet.
+
+## Spätere Erweiterungen
+
+`SubscriptionUpdate`, `Ping`/`Pong`, `PublicEvent`, Spielbefehle wie `MoveTo` und Berechtigungen nach Accounts bleiben Entwürfe. Version, Stream-Sequenz, Weltrevision und Tick haben getrennte Aufgaben. Ein Tick ist keine Grundlage für die Lückenerkennung. Der aktuelle Umfang und die ausgeführten Tests stehen in [P0-002](../../tasks/P0-002-dual-runtime.md).

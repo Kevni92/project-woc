@@ -19,6 +19,8 @@
 | D015 | ENTWURF | Exklusive Character-Lease, maximal eine je Session, atomarer Wechsel und Autonomie bei Freigabe |
 | D016 | ENTWURF | Ambient/Resident/Featured; semantische Tiefe getrennt von zeitlicher Auflösung |
 | D017 | ENTWURF | Identischer asynchroner versionierter Nachrichtenvertrag, Snapshots/Deltas, semantische Paritätstests |
+| D018 | IMPLEMENTIERT | P0-002, 2026-11-27. C++23 mit CMake und Emscripten aus derselben Codebasis. Nativer Loopback-Host mit Boost.Asio/Beast, Worker mit schmaler C-ABI und gemeinsame v1-JSON-Nachrichten mit nlohmann/json. Debug-Client in TypeScript, Svelte 5 und Vite. Umgesetzter Teilumfang von D005, D014 und D017. |
+| D019 | IMPLEMENTIERT | P0-002, 2026-11-27. Eine exklusive Lease pro Session und Charakter, atomarer Wechsel und sofortige Freigabe mit Zustandskontinuität im laufenden Host. Unter den drei Testfiguren sind zwei übernehmbare Bewohner und ein Ambient-Passant. Prototypischer Teilumfang von D015 und D016. |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?

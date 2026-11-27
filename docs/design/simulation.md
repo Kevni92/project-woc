@@ -14,4 +14,4 @@ Zustände: Idle, Traveling, PerformingActivity, Sleeping. Entscheidungslogik zun
 Relevante persistente NPCs außerhalb sichtbarer Karte bleiben simuliert, gegebenenfalls mit gröberen geplanten Ereignissen. Kamera, Clientzahl und Sichtbarkeit dürfen die semantische Simulation nicht verändern. Fällige Ereignisse und räumliche Indizes statt Vollsimulation jeder Figur pro Frame. Native und WASM verwenden dieselben Regeln.
 
 ## Testkriterien
-Gleicher Startzustand, Seed und Befehlsverlauf erzeugen gleiche Ergebnisse; NPC erreicht Arbeitsort, reist heim; Tageswechsel korrekt; Ankunft einmalig; Render-FPS verändert Zeit/Position nicht. P0 hat nur Demo-Marker und optionale manuelle Tag-/Nachtvorschau; echte Uhr/Bewegung in P1.
+Gleicher Startzustand, Seed und Befehlsverlauf erzeugen gleiche Ergebnisse; NPC erreicht Arbeitsort, reist heim; Tageswechsel korrekt; Ankunft einmalig; Render-FPS verändert Zeit/Position nicht. P0-001 plant Demo-Marker und eine optionale manuelle Tag-/Nachtvorschau. P0-002 enthält eine Spieluhr und einen deterministischen Ambient-Weg zum Debuggen. P1 verbindet Spielzeit, Wegesystem und Tagesabläufe mit der Karte.
