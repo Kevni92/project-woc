@@ -2,13 +2,14 @@ import { Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { MapCamera } from './map-camera';
+import { MapCamera, visibilityAt } from './map-camera';
 import { GeographyLayer } from './geography-layer';
 import { layoutMarkers } from './map-anchors';
-import { paletteAt, twilight } from './palette';
+import { MapPalette, twilight } from './palette';
 import type { City, Point } from './city-data';
 import type { Anchor, MarkerLayout, ScreenAnchor } from './map-anchors';
 import type { Route } from '../simulation/protocol';
+import type { MapTheme, MapVisuals } from './visual-data';
 
 export interface MapFrame {
   readonly districts: ReadonlyMap<string, ScreenAnchor>;
@@ -26,11 +27,13 @@ export interface MapFrame {
 export class MapRenderer {
   private readonly scene = new Scene();
   private readonly routeLine = new Line2(
-    new LineGeometry(), new LineMaterial({ color: 0x57e5d1, linewidth: 3, transparent: true, opacity: 0.85 }),
+    new LineGeometry(), new LineMaterial({ linewidth: 3 }),
   );
+  private routePoints?: Route['points'];
   private readonly renderer: WebGLRenderer;
   private readonly geography: GeographyLayer;
   private readonly view: MapCamera;
+  private readonly palette: MapPalette;
   private readonly observer: ResizeObserver;
   private readonly events = new AbortController();
   private readonly districts: Anchor[];
@@ -56,12 +59,15 @@ export class MapRenderer {
     container: HTMLElement,
     private readonly canvas: HTMLCanvasElement,
     city: City,
+    visuals: MapVisuals,
+    private readonly theme: MapTheme,
     private readonly onFrame: (frame: MapFrame) => void,
     private readonly onPick: (buildingId?: string) => void,
   ) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
-    this.geography = new GeographyLayer(city);
-    this.view = new MapCamera(city.bounds);
+    this.geography = new GeographyLayer(city, visuals, theme);
+    this.view = new MapCamera(city.bounds, theme.lod);
+    this.palette = new MapPalette(theme);
     this.districts = city.districts.map(district => ({ id: district.id, position: district.label }));
     this.water = { id: city.id, position: city.waterLabel.position };
     const heights = new Map(city.buildings.map(building => [building.id, building.height]));
@@ -99,10 +105,11 @@ export class MapRenderer {
     const daylight = twilight(minutes);
     if (daylight === this.daylight) return;
     this.daylight = daylight;
-    const palette = paletteAt(minutes);
-    this.scene.background = palette.water;
+    const palette = this.palette.at(daylight);
+    this.scene.background = palette.waterHorizon;
     this.labelColor = '#' + palette.label.getHexString();
     this.geography.setPalette(palette);
+    this.routeLine.material.color.copy(palette.route);
     this.invalidate();
   }
 
@@ -112,12 +119,18 @@ export class MapRenderer {
   }
 
   setRoute(route?: Route) {
-    this.routeLine.visible = !!route && route.points.length > 1;
-    if (this.routeLine.visible && route) {
+    const points = route?.points;
+    const visible = !!points && points.length > 1;
+    const changed = visible !== this.routeLine.visible;
+    this.routeLine.visible = visible;
+    if (visible && points && (points.length !== this.routePoints?.length
+      || !points.every((point, i) => point.x === this.routePoints?.[i].x && point.z === this.routePoints?.[i].z))) {
+      this.routePoints = points;
       this.routeLine.geometry.dispose();
-      this.routeLine.geometry = new LineGeometry().setPositions(route.points.flatMap(({ x, z }) => [x, 0.6, z]));
+      this.routeLine.geometry = new LineGeometry().setPositions(points.flatMap(({ x, z }) => [x, 12 * this.theme.layerStepM, z]));
+      this.invalidate();
     }
-    this.invalidate();
+    if (changed) this.invalidate();
   }
 
   selectBuilding(id?: string) {
@@ -191,11 +204,13 @@ export class MapRenderer {
     const moving = this.view.advance(seconds, this.reducedMotion.matches);
     this.lastFrame = time;
     const { detail, camera, verticalSpan } = this.view;
-    this.geography.setDetail(detail);
+    this.geography.setDetail(detail, visibilityAt(verticalSpan, this.theme.lod.facadeSpanM),
+      visibilityAt(verticalSpan, this.theme.lod.markingsSpanM));
     this.renderer.render(this.scene, camera);
     const projected = new Vector3();
     const project = (anchors: readonly Anchor[]) => anchors.flatMap(({ id, position: [x, z], height }) => {
-      projected.set(x, (height ?? 0) * detail, z).project(camera);
+      const y = height === undefined ? 0 : 13 * this.theme.layerStepM + height * detail;
+      projected.set(x, y, z).project(camera);
       if (Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1) return [];
       return [{ id, x: (projected.x + 1) * this.width / 2, y: (1 - projected.y) * this.height / 2 }];
     });
@@ -282,9 +297,7 @@ export class MapRenderer {
     this.pointerCancel(event);
     if (this.dragged || this.rotating) return;
     this.raycaster.setFromCamera(this.screen(event.clientX, event.clientY), this.view.camera);
-    const hits = this.raycaster.intersectObjects(this.geography.buildingMeshes, false);
-    const building = hits.find(hit => hit.object.visible && hit.object.parent?.visible);
-    this.onPick(building?.object.userData.buildingId);
+    this.onPick(this.geography.pickBuilding(this.raycaster));
   };
 
   private readonly pointerCancel = (event: PointerEvent) => {
@@ -293,6 +306,6 @@ export class MapRenderer {
   };
 
   private readonly contextMenu = (event: MouseEvent) => {
-    if (this.rotating && this.dragged) event.preventDefault();
+    if (event.button === 2 && this.rotating) event.preventDefault();
   };
 }

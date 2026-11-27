@@ -33,7 +33,7 @@ for (const mode of ['wasm', 'ws'] as const) {
         const { data } = context.getImageData(0, 0, bitmap.width, bitmap.height);
         let matching = 0;
         for (let i = 0; i < data.length; i += 4) {
-          if (data[i] < 135 && data[i + 1] > 165 && data[i + 2] > 150) ++matching;
+          if (data[i] < 32 && data[i + 1] > 95 && data[i + 1] < 135 && data[i + 2] > 85 && data[i + 2] < 125) ++matching;
         }
         bitmap.close();
         return matching;

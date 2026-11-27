@@ -37,18 +37,21 @@ export function placePopover(area: ScreenBox, width: number, height: number, anc
     top: clamp(top, area.top, bottom - height),
   }));
   let best: { left: number; top: number; x?: number; y?: number } = positions[0];
-  let fewestCovered = Infinity;
+  let leastOverlap = Infinity;
   for (const position of positions) {
     const x = clamp(anchor.x, position.left, position.left + width);
     const y = clamp(anchor.y, position.top, position.top + height);
     if (Math.hypot(x - anchor.x, y - anchor.y) < gap - 1) continue;
-    const covered = pins.filter(pin => pin.id !== anchor.id
-      && pin.x + 17 > position.left && pin.x - 17 < position.left + width
-      && pin.y + 17 > position.top && pin.y - 17 < position.top + height).length;
-    if (covered === 0) return { ...position, x, y };
-    if (covered < fewestCovered) {
+    const overlap = pins.reduce((area, pin) => {
+      if (pin.id === anchor.id) return area;
+      const overlapWidth = Math.min(pin.x + 17, position.left + width) - Math.max(pin.x - 17, position.left);
+      const overlapHeight = Math.min(pin.y + 17, position.top + height) - Math.max(pin.y - 17, position.top);
+      return area + Math.max(0, overlapWidth) * Math.max(0, overlapHeight);
+    }, 0);
+    if (overlap === 0) return { ...position, x, y };
+    if (overlap < leastOverlap) {
       best = { ...position, x, y };
-      fewestCovered = covered;
+      leastOverlap = overlap;
     }
   }
   return best;

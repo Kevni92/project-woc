@@ -23,7 +23,7 @@ Die Ninja-Presets `native` und `wasm` verwenden getrennte Build-Verzeichnisse. `
 | `simulation/hosts/native/`, `simulation/hosts/wasm/` | CLI-Frames, Loopback-WebSocket, Takt beziehungsweise C-ABI |
 | `protocol/` | Sprachneutrale JSON-Schemas und gemeinsame Vertragsfixture |
 | `client/src/simulation/` | Transportadapter, Worker, SimulationClient und Projektion |
-| `content/` | Versionierte statische Kartendaten, Wegenetz und v2-JSON-Schema |
+| `content/` | Semantische Welt v2 mit Wegenetz, Visual-Sidecar v1 und Theme v1 samt JSON-Schemas |
 | `client/src/render/` | Kartenvalidierung, Three.js-Geografie, Kamera, Palette und Projektion auf den Bildschirm |
 | `client/src/ui/` | Stadtkarte mit HTML-Markern und Details sowie zwei Debug-Panels auf demselben Simulationshost |
 | `tests/`, `client/tests/` | Native Tests, Client-/Kartentests, Vertragsparität und Browser-Smoke |
@@ -46,7 +46,6 @@ WorldState enthält Bewohner auch ohne Client; Session-/Kontrollrechte sind kein
 
 `content/breakwater.json` liefert statische Geografie und den Graphen für die Welt `p0-test-world` in lokalen Metern. CMake bettet die JSON-Bytes reproduzierbar in beide Builds ein. Der Content-Adapter liest und validiert die Geografie beim Hoststart und übergibt dem Core eine typisierte Weltdefinition. Vite bündelt dieselbe Datei für die Karte. Der Renderer nutzt dieselben x/z-Koordinaten wie die öffentlichen Charakterpositionen, y ist die Höhe.
 
-`MapViewport` reicht lesende Marker, Route, Auswahl und Spielminuten an den Renderer. Die orthografische Kamera bewegt sich in einer Szene. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Orts- und Charaktermarker bleiben als HTML-Schaltflächen per Tastatur bedienbar. Bei dichter Lage halten Führungslinien ihre Verbindung zur projizierten Position. `MapView` nimmt Befehle entgegen und zeigt Steuerrechte, Reisezustand und privates Bargeld aus der autoritativen Projektion. Bei einer Resynchronisierung blendet die Karte Live-Marker und Route bis zum Snapshot aus und lädt bei Bedarf eine frische Vorschau. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu.
+`MapViewport` liest bei der Initialisierung das validierte Visual-Sidecar und Theme. Es reicht die lesenden Marker, die Route, die Auswahl und die Spielminuten an den Renderer. Die orthografische Kamera bietet einen unabhängigen Azimut. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Farbgruppen bündeln die statische Geometrie. Ein Dreiecksindex ordnet angeklickte Dach- und Wandflächen der autoritativen Gebäude-ID zu. Die Fenster werden in räumlichen Gruppen erst in der Nahansicht eingeblendet. Die Wasserfarbe nutzt eine einmal berechnete Distanztextur mit metrischen Koordinaten.
 
-## Geplanter Ausbau des Kartenpfads
-P1-004 trennt semantische Geografie v2, separat validierte Visual-JSON und Theme/Renderregeln. Fullscreen-HUD und 360°-Azimut erweitern die bestehenden Module. Keine Änderung an der autoritativen Simulation oder am Protokoll durch reine visuelle Daten. Siehe [Kartenformat](map-format.md) und [Kartenstil](../design/map-visuals.md).
+`MapView` nimmt Befehle entgegen und zeigt Steuerrechte, Reisezustand und privates Bargeld aus der autoritativen Projektion. Marker, Führungslinien und Kontextfenster teilen sich die Projektion in CSS-Pixeln. Bei einer Resynchronisierung blendet die Karte Live-Marker und Route bis zum Snapshot aus und lädt bei Bedarf eine frische Vorschau. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu. [Kartenformat](map-format.md) · [Kartenstil](../design/map-visuals.md)

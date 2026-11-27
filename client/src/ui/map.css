@@ -34,7 +34,7 @@
     z-index: 5;
     pointer-events: none;
   }
-  .atlas-navigation { top: var(--map-top); left: var(--map-left); margin: 0; }
+  .atlas-navigation { top: var(--map-top); left: var(--map-left); margin: 0; z-index: 6; }
   .atlas-session { top: var(--map-top); right: var(--map-right); }
   .atlas-feedback { left: var(--map-left); bottom: calc(var(--map-bottom) + 3.2rem); display: grid; gap: .35rem; }
   .atlas-brand, .atlas-menu, .atlas-session, .atlas-directory, .atlas-feedback > *, .map-popover-panel {
@@ -259,6 +259,8 @@
   @media (max-width: 460px) {
     .atlas { --map-left: max(.55rem, env(safe-area-inset-left)); --map-right: max(.55rem, env(safe-area-inset-right)); }
     .atlas-brand { padding-inline: .65rem; }
+    .atlas-menu { margin-top: 1.55rem; }
+    .atlas-feedback { top: calc(var(--map-top) + 8.4rem); }
     .atlas h1 { font-size: 1.33rem; }
     .atlas-session { padding: .4rem; }
     .atlas-status, .atlas-telemetry { gap: .32rem; }

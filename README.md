@@ -2,7 +2,7 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand.** In Breakwater können übernommene Bewohner zu sechs Orten laufen. Karte und Simulations-Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
+**Stand.** Breakwater ist eine bildschirmfüllende, frei drehbare Küstenkarte mit fließendem Übergang zur 3D-Nahansicht. Übernommene Bewohner können zu sechs Orten laufen. Karte und Simulations-Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
 
 ## Lokal bauen und starten
 
@@ -40,7 +40,9 @@ npm --prefix client run dev -- --host 127.0.0.1 --port 5173 --strictPort
 - **WASM** über [127.0.0.1:5173](http://127.0.0.1:5173/). Stadtkarte und Debugger teilen sich den dedizierten Worker.
 - **WebSocket** über [127.0.0.1:5173/?transport=ws](http://127.0.0.1:5173/?transport=ws). In einem zweiten Terminal aus der Repository-Wurzel `build\native\woc_server.exe` (Windows) oder `./build/native/woc_server` (Linux/macOS) starten. Standardadresse ist `ws://127.0.0.1:8765`. Für einen anderen Port `woc_server --port PORT` verwenden und die WebSocket-Adresse als URL-kodierten Parameter `ws` übergeben.
 
-Die Karte verbindet beim ersten Öffnen automatisch. Ziehen und Pfeiltasten verschieben den Ausschnitt. Mausrad, Zwei-Finger-Geste oder Plus/Minus zoomen. Die Fokustaste zentriert den eigenen Charakter oder den Startbereich. Die Übersichtstaste oder Pos1 setzt den Ausschnitt zurück. Orte und Charaktere lassen sich auf der Karte oder in der Seitenleiste auswählen. Ein Klick auf ein Gebäude zeigt Viertel und Höhe. Die Karte benötigt WebGL 2. [Three.js-Dokumentation](https://threejs.org/docs/pages/WebGLRenderer.html)
+Die Karte verbindet beim ersten Öffnen automatisch. Linkes Ziehen und die Pfeiltasten verschieben den Ausschnitt. Mausrad, Zwei-Finger-Geste oder Plus/Minus zoomen. Rechtes Ziehen, Umschalt + linkes Ziehen, Q/E und die Drehtasten rotieren die Karte. N und der Kompass richten sie nach Norden aus. Die Fokustaste zentriert den eigenen Charakter oder den Startbereich. Die Übersichtstaste oder Pos1 setzt den Ausschnitt und die Nordausrichtung zurück.
+
+Wähle Orte oder Charaktere über ihre Marker oder die einklappbaren Listen im Kartenmenü. Der Auswahlbereich folgt dem Marker auf großen Fenstern und erscheint am unteren Rand auf schmalen Fenstern. Ein Gebäudeklick zeigt Viertel und Höhe. Escape schließt die Auswahl oder die geöffnete Liste. Ohne WebGL 2 bleiben Listen und Reiseaktionen erreichbar.
 
 Wähle Ada oder Ben und klicke auf **Übernehmen**. Wähle anschließend einen Ort. Die Karte zeigt die Gehroute, Entfernung und Dauer in Spielminuten. **Zu Fuß gehen** startet die Reise. Ziel und verbleibende Zeit stehen in den Kartendetails. Eine Spielminute entspricht ungefähr einer realen Sekunde. Eine begonnene Reise läuft im Host auch bei Freigabe, Charakterwechsel oder Disconnect weiter.
 
@@ -60,14 +62,16 @@ npm --prefix client run test:e2e
 
 Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die Paritätsprüfung führt dieselben Befehle und Ticks über CLI, Worker und WebSocket aus. Mit `--manual-clock-stdin` liest der native Server pro Tick eine Zeile `tick` von stdin. Fixture und Prüfungen stehen in [P1-001](tasks/P1-001-movement.md).
 
+`npm --prefix client run test:e2e -- map-visual.spec.ts` erzeugt eigene Kartenaufnahmen mit der Host-Spielzeit 08:00 und 21:00 unter `client/test-results/`. Der Test deckt die Übersicht, die Nahsicht, einen 90°-Küstenblick, einen mobilen Kontext und die Zwei-Finger-Zoomgeste ab.
+
 ## Dokumentation
 | Datei | Zweck |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Zentrale KI-Anweisung für jeden neuen Chat |
 | [Vision](docs/design/vision.md) | Spielprinzip, Grenzen und Kernschleife |
 | [Welt](docs/design/world.md) | Geografie, Orte, Kartenansichten |
-| [Kartenstil](docs/design/map-visuals.md) | Fullscreen-HUD, Kamera und Detailgrad (geplant) |
-| [Kartenformat](docs/architecture/map-format.md) | Trennung semantischer Geografie, Visual-Daten und Theme (geplant) |
+| [Kartenstil](docs/design/map-visuals.md) | Fullscreen-HUD, Kamera und kartografischer Detailgrad |
+| [Kartenformat](docs/architecture/map-format.md) | JSON-Verträge für semantische Geografie, Visual-Sidecar und Theme |
 | [Simulation](docs/design/simulation.md) | Zeit, NPCs und Bewegung |
 | [Gameplay](docs/design/gameplay.md) | Charakter, Besitz, Inventar, Missionen |
 | [Charaktere](docs/design/characters.md) | Identität, Steuerübernahme, Simulationstiefe |
@@ -79,7 +83,7 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P0-001](tasks/P0-001-map-prototype.md) | Interaktive Karte |
 | [P0-002](tasks/P0-002-dual-runtime.md) | Native/WASM-Simulation mit identischem Protokoll |
 | [P1-001](tasks/P1-001-movement.md) | Autoritatives Wegenetz und Fußreisen |
-| [P1-004](tasks/P1-004-map-visual-upgrade.md) | Fullscreen-Karte und Visual-Format (nächster Task) |
+| [P1-004](tasks/P1-004-map-visual-upgrade.md) | Fullscreen-Karte, Visualformat und kartografische Details |
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 

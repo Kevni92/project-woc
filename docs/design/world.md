@@ -1,5 +1,5 @@
 # Welt und Karte
-Status. Breakwater ist als Teststadt mit autoritativem Fußwegenetz IMPLEMENTIERT. Die weitere Ausgestaltung bleibt ENTWURF.
+Status. Breakwater ist als Teststadt mit autoritativem Fußwegenetz und kartografischer 2D-/3D-Darstellung IMPLEMENTIERT. Die weitere Ausgestaltung bleibt ENTWURF.
 
 ## Maßstab und Inhalt
 Zunächst eine fiktive, von US-Küstenstädten inspirierte Teststadt. Keine komplette GTA-Karte. Vorschlag: ein zusammenhängendes Gebiet von ungefähr 1 × 1 km mit drei kleinen Vierteln (Wohnen, Gewerbe, Hafen), etwa 30–50 Gebäude und 6–8 interaktive Orte. Zahlen sind veränderliche Testdaten.
@@ -21,10 +21,11 @@ Koordinaten in lokalen Metern (x/z, y = Höhe in Three.js); C++-Simulation kennt
 ## Ansichten
 | Zoom | Darstellung |
 |---|---|
-| Fern | Orthogonale Top-down-Karte: Land, Wasser, Hauptstraßen, wichtige POIs |
-| Mittel | Geneigte orthografische Kamera, Gebäudeumrisse und einfache Extrusionen |
-| Nah | 3D-Quader/Prismen, Nebenstraßen, einzelne Marker und anklickbare Gebäude |
-Kamerawechsel kontinuierlich oder über interpolierten Winkel mit Hysterese, ohne Positionssprung; in Fernsicht keine Gebäudeextrusionen anzeigen. Pan, Zoom zum Mauszeiger, Reset/Fokus auf Spieler. Kartenmarker mit Symbol und Farbe unterscheiden; Labels priorisieren und nicht alles gleichzeitig anzeigen. Auswahl per Raycasting/Marker-Hit-Test, Details im HTML-Panel. Eine einzige Welt, keine duplizierten Zustände zwischen Kartenmodi.
+| Fern | Orthogonale Top-down-Karte mit flachen Gebäudegrundrissen, Küstenflächen, Straßenklassen und Ortsmarkern |
+| Mittel | Geneigte orthografische Kamera mit wachsenden Volumen und Dachformen |
+| Nah | Fassadenfenster, Straßenmarkierungen, Stegstützen und anklickbare Gebäude |
+
+Neigung und Gebäudehöhe gehen beim Zoomen stufenlos ineinander über. Der Azimut ist frei drehbar. Pan, Mauszeiger-Zoom und Fokus verwenden dieselbe Kamera für alle Stufen. Die Auswahl erfolgt per Raycasting oder über HTML-Marker und öffnet ein Kontextfenster. [Kartenstil](map-visuals.md)
 
 ## Beispielorte
 Wohnung, Laden, Café, Werkstatt, Autohaus, Hafenlager, öffentlicher Treffpunkt. Ort-Details nennen Name, Typ, Öffnungsstatus, Entfernung/Reisezeit, mögliche Aktionen. Standortabhängige Aktionen nur bei tatsächlicher Ankunft.
@@ -32,10 +33,10 @@ Wohnung, Laden, Café, Werkstatt, Autohaus, Hafenlager, öffentlicher Treffpunkt
 ## Tag/Nacht
 Zeitabhängige Farbpalette (Terrain, Gebäude, Straßen), nachts ausgewählte beleuchtete Gebäude/POIs. Keine aufwendige Beleuchtungspflicht, Lesbarkeit der Marker immer erhalten.
 
-P0-001 blendet zwischen Nacht- und Tagfarben von 05:00 bis 07:00 und von 18:00 bis 20:00 Spielzeit. Die Spielminuten kommen vom laufenden Host.
+Das Theme blendet zwischen Nacht- und Tagfarben von 05:00 bis 07:00 und von 18:00 bis 20:00 Spielzeit. Die Spielminuten kommen vom laufenden Host.
 
 ## Nächste Weltentscheidungen
 Fiktive Stadt vs. reale Geografie, Stil (US-Küste vs. andere Region), Größe und Dichte, freie Bewegung vs. Klickziel auf Wegenetz. Für P0 reicht eine handgebaute Testkarte; finale Geografie nicht blockierend.
 
-## Weiterentwicklung der Darstellung (VORGABE / ENTWURF)
-Die Karte soll den gesamten Browser-Viewport füllen und 360°-Rotation sowie schwebende HUD-Elemente unterstützen. Dezente Dächer und Fenster, Strand, Wasserfarbstufen, Stege und organischere Straßen sind das visuelle Ziel. [Kartenstil](map-visuals.md) und [Kartenformat](../architecture/map-format.md) konkretisieren P1-004. Das vorhandene autoritative Wegenetz bleibt dabei unverändert; echte Geografieänderungen benötigen gemeinsame Content-Migration.
+## Darstellung und Geografie
+Das Visual-Sidecar ergänzt die Karte um Strand, Landnutzung, Stege und Stilzuordnungen. Das Theme beschreibt Farben und Detailgrenzen. Echte Geografieänderungen benötigen eine gemeinsame Content-Migration mit dem autoritativen Wegenetz. [Kartenformat](../architecture/map-format.md)

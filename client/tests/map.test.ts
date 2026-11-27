@@ -1,13 +1,21 @@
-import { Vector2, Vector3 } from 'three';
+import { Raycaster, Vector2, Vector3 } from 'three';
 import { describe, expect, test } from 'vitest';
 import definition from '../../content/breakwater.json';
 import { city, parseCity } from '../src/render/city-data';
+import { loadBreakwaterStyle } from '../src/render/breakwater-style';
+import { longRectangle } from '../src/render/building-layer';
 import type { Point } from '../src/render/city-data';
+import { GeographyLayer } from '../src/render/geography-layer';
 import { layoutMarkers, placePopover } from '../src/render/map-anchors';
-import { detailAt, MapCamera } from '../src/render/map-camera';
-import { paletteAt, twilight } from '../src/render/palette';
+import { detailAt, MapCamera, visibilityAt } from '../src/render/map-camera';
+import { MapPalette, twilight } from '../src/render/palette';
+import { roadMarkings } from '../src/render/road-layer';
+import { depthSamples, extendLand } from '../src/render/water-layer';
+import { segments } from '../src/render/map-geometry';
 import type { ClientState } from '../src/simulation/simulation-client';
 import { projectMap } from '../src/ui/map-projection';
+
+const { theme, visuals } = loadBreakwaterStyle();
 
 function contains(polygon: readonly Point[], [x, z]: Point): boolean {
   let inside = false;
@@ -50,7 +58,7 @@ describe('city definition', () => {
 
 describe('map presentation', () => {
   test('zooms around the pointer across LODs, including intermediate frames', () => {
-    const view = new MapCamera(city.bounds);
+    const view = new MapCamera(city.bounds, theme.lod);
     view.resize(1000, 600);
     view.advance(0, true);
     expect(view.detail).toBe(0);
@@ -62,8 +70,8 @@ describe('map presentation', () => {
       expect(view.groundAt(cursor).distanceTo(atCursor)).toBeLessThan(0.0001);
     }
     expect(view.detail).toBe(1);
-    expect(detailAt(300)).toBeGreaterThan(detailAt(500));
-    expect(detailAt(650)).toBe(0);
+    expect(detailAt(300, theme.lod)).toBeGreaterThan(detailAt(500, theme.lod));
+    expect(detailAt(650, theme.lod)).toBe(0);
 
     view.focus([10, 5]);
     view.advance(0, true);
@@ -90,7 +98,7 @@ describe('map presentation', () => {
   });
 
   test('rotates in both directions around the pivot with stable projection and cursor zoom', () => {
-    const view = new MapCamera(city.bounds);
+    const view = new MapCamera(city.bounds, theme.lod);
     view.resize(1440, 960);
     const pivot = new Vector3(40, 0, 10);
     const pointer = new Vector2(0.43, -0.34);
@@ -133,16 +141,69 @@ describe('map presentation', () => {
       .toEqual({ left: 616, top: 110, x: 856, y: 120 });
     expect(placePopover(area, 240, 150, { id: 'pin', x: 0, y: 716 })).toMatchObject({ left: 24, top: 560 });
     expect(placePopover(area, 240, 150)).toEqual({ left: 675, top: 110 });
+    const neighbor = { id: 'neighbor', x: 545, y: 485 };
+    expect(placePopover(area, 240, 150, { id: 'pin', x: 500, y: 500 }, [neighbor]))
+      .toMatchObject({ left: 236 });
   });
 
   test('blends the palette by server game minutes and wraps at midnight', () => {
     expect([0, 300, 360, 420, 1080, 1140, 1200, 1440].map(twilight)).toEqual([0, 0, 0.5, 1, 1, 0.5, 0, 0]);
-    const night = paletteAt(0);
-    const day = paletteAt(480);
-    expect(paletteAt(360).water).toEqual(night.water.clone().lerp(day.water, 0.5));
-    expect(night.street.getHex()).not.toBe(night.land.getHex());
-    expect(night.roof.getHex()).not.toBe(night.water.getHex());
-    expect(paletteAt(1440)).toEqual(night);
+    const night = new MapPalette(theme).at(twilight(0));
+    const palette = new MapPalette(theme);
+    const dayShallows = palette.at(twilight(480)).waterShallow.clone();
+    expect(palette.at(twilight(360)).waterShallow).toEqual(night.waterShallow.clone().lerp(dayShallows, 0.5));
+    expect(night.roadLocal.getHex()).not.toBe(night.land.getHex());
+    expect(night.roofResidential.getHex()).not.toBe(night.waterHorizon.getHex());
+    expect(palette.at(twilight(1440))).toEqual(night);
+  });
+});
+
+describe('cartographic geometry', () => {
+  test('uses long-axis ridges, rejects trapezoids and picks the same building in flat and tilted views', () => {
+    const house = city.buildings.find(({ id }) => id === 'north-01')!;
+    const ridge = longRectangle(house.footprint)!;
+    expect(ridge.slice(0, 2)).toEqual([[-448, -393], [-448, -332]]);
+    expect(longRectangle([[0, 0], [8, 0], [6, 6], [0, 6]])).toBeUndefined();
+    const layer = new GeographyLayer(city, visuals, theme);
+    const view = new MapCamera(city.bounds, theme.lod);
+    const ray = new Raycaster();
+    try {
+      view.resize(1440, 960);
+      for (const [detail, angle] of [[0, Math.PI / 2], [0.5, Math.PI], [1, Math.PI * 1.5]]) {
+        view.focus([-465, -364], detail === 0 ? 800 : detail < 1 ? 392.5 : 76);
+        view.rotate(angle);
+        view.advance(0, true);
+        layer.setDetail(view.detail, visibilityAt(view.verticalSpan, theme.lod.facadeSpanM), 0);
+        layer.group.updateMatrixWorld(true);
+        const roof = new Vector3(-468, 0.42 + view.detail * (house.height - 0.3), -364)
+          .project(view.camera);
+        ray.setFromCamera(new Vector2(roof.x, roof.y), view.camera);
+        expect(layer.pickBuilding(ray)).toBe(house.id);
+      }
+      expect(visibilityAt(90, theme.lod.facadeSpanM)).toBe(1);
+      expect(visibilityAt(117, theme.lod.facadeSpanM)).toBeGreaterThan(0);
+      expect(visibilityAt(135, theme.lod.facadeSpanM)).toBe(0);
+    } finally {
+      layer.dispose();
+    }
+  });
+
+  test('water depth samples follow the physical coast and have no false shoreline along map cuts', () => {
+    const coast = visuals.coasts.flatMap(({ path }) => segments(path, false));
+    const { skirts, coast: renderedCoast } = extendLand(city, coast, 800);
+    expect(skirts).toHaveLength(3);
+    expect(renderedCoast).toHaveLength(coast.length + 2);
+    const depth = depthSamples({ minX: 0, maxX: 100, minZ: 0, maxZ: 100 }, [[[10, 0], [10, 100]]], 10, 75);
+    expect(depth[1]).toBeLessThan(depth[3]);
+    expect(depth[3]).toBeLessThan(depth[6]);
+    expect(depth[9]).toBe(255);
+    expect(depth.slice(0, 10)).toEqual(depth.slice(90));
+  });
+
+  test('road markings retain their phase at waypoints and end within the centerline', () => {
+    const segments = roadMarkings([[0, 0], [7, 0], [14, 0], [14, 9]], 6, 4);
+    expect(segments).toEqual([[[2, 0], [7, 0]], [[7, 0], [8, 0]], [[12, 0], [14, 0]],
+      [[14, 0], [14, 4]], [[14, 8], [14, 9]]]);
   });
 });
 

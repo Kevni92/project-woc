@@ -133,51 +133,51 @@
 
 {#snippet context()}
   <section class="map-details" aria-label="Auswahl">
-  <div class="details-heading">
-    <p class="atlas-kicker">{selectedLocation?.type ?? (selectedBuilding ? 'Gebäude' : 'Charakter')}</p>
-    <button class="clear-selection" aria-label="Auswahl schließen" bind:this={closeSelection} onclick={closeDetails}>×</button>
-  </div>
-  {#if selectedLocation}
-    <h2>{selectedLocation.name}</h2>
-    <p class="detail-meta">{districtName(selectedLocation.district)}</p>
-    <p class="detail-description">{selectedLocation.description}</p>
-    {#if proposedRoute}
-      {#if proposedRoute.distanceMm > 0}
-        <p class="detail-meta route-preview">{meters.format(proposedRoute.distanceMm / 1000)} m · {proposedRoute.durationTicks} Spielmin.</p>
-        {@const ownId = characterId}
-        {@const destinationId = selectedLocation.id}
-        {#if ownId}
-          <button class="detail-action claim" disabled={!projection.canCommand}
-            onclick={() => run(() => client.moveTo(ownId, destinationId))}>Zu Fuß gehen</button>
+    <div class="details-heading">
+      <p class="atlas-kicker">{selectedLocation?.type ?? (selectedBuilding ? 'Gebäude' : 'Charakter')}</p>
+      <button class="clear-selection" aria-label="Auswahl schließen" bind:this={closeSelection} onclick={closeDetails}>×</button>
+    </div>
+    {#if selectedLocation}
+      <h2>{selectedLocation.name}</h2>
+      <p class="detail-meta">{districtName(selectedLocation.district)}</p>
+      <p class="detail-description">{selectedLocation.description}</p>
+      {#if proposedRoute}
+        {#if proposedRoute.distanceMm > 0}
+          <p class="detail-meta route-preview">{meters.format(proposedRoute.distanceMm / 1000)} m · {proposedRoute.durationTicks} Spielmin.</p>
+          {@const ownId = characterId}
+          {@const destinationId = selectedLocation.id}
+          {#if ownId}
+            <button class="detail-action claim" disabled={!projection.canCommand}
+              onclick={() => run(() => client.moveTo(ownId, destinationId))}>Zu Fuß gehen</button>
+          {/if}
+        {:else}
+          <p class="detail-meta">Bereits am Ziel</p>
         {/if}
-      {:else}
-        <p class="detail-meta">Bereits am Ziel</p>
+      {:else if previewResult && !previewResult.accepted}
+        <p class="atlas-error" role="alert">{previewResult.code}</p>
       {/if}
-    {:else if previewResult && !previewResult.accepted}
-      <p class="atlas-error" role="alert">{previewResult.code}</p>
+    {:else if selectedBuilding}
+      <h2>{selectedBuilding.id.toUpperCase()}</h2>
+      <p class="detail-meta">{districtName(selectedBuilding.district)} · {selectedBuilding.height} m Höhe</p>
+      {#each city.locations.filter(location => location.building === selectedBuilding?.id) as location (location.id)}
+        <button class="detail-action" onclick={() => select({ kind: 'location', id: location.id })}>{location.name} ↗</button>
+      {/each}
+    {:else if selectedCharacter}
+      {@const marker = selectedCharacter}
+      <h2>{marker.name}</h2>
+      <p class="detail-meta">{markerLabels[marker.kind]}</p>
+      <dl class="character-details">
+        <div><dt>Position</dt><dd>{meters.format(marker.position[0])} m / {meters.format(marker.position[1])} m</dd></div>
+        {#if marker.kind === 'owned'}<div><dt>Bargeld</dt><dd>{projection.cash}</dd></div>{/if}
+      </dl>
+      {#if marker.kind === 'owned'}
+        <button class="detail-action" disabled={!projection.canCommand}
+          onclick={() => run(() => client.releaseCharacter(marker.id))}>Freigeben</button>
+      {:else if marker.kind === 'resident' || marker.kind === 'occupied'}
+        <button class="detail-action claim" disabled={!projection.canCommand || marker.kind === 'occupied'}
+          onclick={() => run(() => client.acquireCharacter(marker.id))}>Übernehmen</button>
+      {/if}
     {/if}
-  {:else if selectedBuilding}
-    <h2>{selectedBuilding.id.toUpperCase()}</h2>
-    <p class="detail-meta">{districtName(selectedBuilding.district)} · {selectedBuilding.height} m Höhe</p>
-    {#each city.locations.filter(location => location.building === selectedBuilding?.id) as location (location.id)}
-      <button class="detail-action" onclick={() => select({ kind: 'location', id: location.id })}>{location.name} ↗</button>
-    {/each}
-  {:else if selectedCharacter}
-    {@const marker = selectedCharacter}
-    <h2>{marker.name}</h2>
-    <p class="detail-meta">{markerLabels[marker.kind]}</p>
-    <dl class="character-details">
-      <div><dt>Position</dt><dd>{meters.format(marker.position[0])} m / {meters.format(marker.position[1])} m</dd></div>
-      {#if marker.kind === 'owned'}<div><dt>Bargeld</dt><dd>{projection.cash}</dd></div>{/if}
-    </dl>
-    {#if marker.kind === 'owned'}
-      <button class="detail-action" disabled={!projection.canCommand}
-        onclick={() => run(() => client.releaseCharacter(marker.id))}>Freigeben</button>
-    {:else if marker.kind === 'resident' || marker.kind === 'occupied'}
-      <button class="detail-action claim" disabled={!projection.canCommand || marker.kind === 'occupied'}
-        onclick={() => run(() => client.acquireCharacter(marker.id))}>Übernehmen</button>
-    {/if}
-  {/if}
   </section>
 {/snippet}
 

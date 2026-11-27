@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Snippet } from 'svelte';
   import { city } from '../render/city-data';
+  import { loadBreakwaterStyle } from '../render/breakwater-style';
   import { MapRenderer } from '../render/map-renderer';
   import { pinPosition, type MarkerLayout } from '../render/map-anchors';
   import type { MapFrame } from '../render/map-renderer';
@@ -36,8 +37,15 @@
   const turn = Math.PI / 6;
 
   onMount(() => {
+    let style: ReturnType<typeof loadBreakwaterStyle>;
     try {
-      renderer = new MapRenderer(container, canvas, city, value => { frame = value; }, id => {
+      style = loadBreakwaterStyle();
+    } catch (error) {
+      failure = 'Kartendarstellung konnte nicht geladen werden. ' + (error instanceof Error ? error.message : String(error));
+      return;
+    }
+    try {
+      renderer = new MapRenderer(container, canvas, city, style.visuals, style.theme, value => { frame = value; }, id => {
         onselect(id ? { kind: 'building', id } : undefined);
       });
     } catch {
@@ -71,6 +79,20 @@
 
   export function focusSurface() {
     surface.focus({ preventScroll: true });
+  }
+
+  function labelAbove(anchor: MarkerLayout, name: string, frame: MapFrame) {
+    const pin = pinPosition(anchor);
+    const halfWidth = name.length * 3.5 + 20;
+    let blockedBelow = false;
+    for (const marker of frame.characters.values()) {
+      const character = pinPosition(marker);
+      if (Math.abs(character.x - pin.x) >= halfWidth) continue;
+      const gap = character.y - pin.y;
+      if (gap > -48 && gap < 0) return false;
+      if (gap >= 0 && gap < 48) blockedBelow = true;
+    }
+    return anchor.dy < 0 || blockedBelow;
   }
 
   function keydown(event: KeyboardEvent) {
@@ -139,7 +161,8 @@
         {@const active = selection?.kind === 'location' && selection.id === location.id}
         {#if anchor}
           {@render leader(anchor)}
-          <button class="location-pin" class:active class:label-above={anchor.dy < 0} aria-label={location.name} aria-pressed={active}
+          <button class="location-pin" class:active class:label-above={labelAbove(anchor, location.name, frame)}
+            aria-label={location.name} aria-pressed={active}
             style:left={anchor.x + anchor.dx + 'px'} style:top={anchor.y + anchor.dy + 'px'}
             onclick={event => onselect({ kind: 'location', id: location.id }, event.currentTarget)}>
             <span class="pin-dot" aria-hidden="true"></span><span class="pin-label">{location.name}</span>

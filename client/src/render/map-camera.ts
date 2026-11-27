@@ -1,5 +1,6 @@
 import { MathUtils, OrthographicCamera, Plane, Raycaster, Vector2, Vector3 } from 'three';
 import type { Bounds, Point } from './city-data';
+import type { MapLod } from './visual-data';
 
 const GROUND = new Plane(new Vector3(0, 1, 0));
 const MIN_SPAN = 20;
@@ -8,8 +9,12 @@ const MAX_DETAIL_TILT = Math.PI * 0.29;
 const TAU = 2 * Math.PI;
 const wrapAngle = (angle: number) => MathUtils.euclideanModulo(angle + Math.PI, TAU) - Math.PI;
 
-export function detailAt(span: number): number {
-  return 1 - MathUtils.smoothstep(span, 135, 650);
+export function detailAt(span: number, lod: MapLod): number {
+  return 1 - MathUtils.smoothstep(span, lod.fullHeightSpanM, lod.flatSpanM);
+}
+
+export function visibilityAt(span: number, threshold: number): number {
+  return 1 - MathUtils.smoothstep(span, 0.76 * threshold, threshold);
 }
 
 export class MapCamera {
@@ -25,12 +30,12 @@ export class MapCamera {
   private anchor?: { screen: Vector2; world: Vector3 };
   private fitted = true;
 
-  constructor(private readonly bounds: Bounds) {
+  constructor(private readonly bounds: Bounds, private readonly lod: MapLod) {
     this.reset();
     this.advance(0, true);
   }
 
-  get detail() { return detailAt(this.span); }
+  get detail() { return detailAt(this.span, this.lod); }
   get verticalSpan() { return this.span; }
   get northAngle() {
     return Math.atan2(Math.sin(this.yaw), Math.cos(this.yaw) * Math.cos(this.detail * MAX_DETAIL_TILT));

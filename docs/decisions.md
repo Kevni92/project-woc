@@ -26,6 +26,7 @@
 | D022 | IMPLEMENTIERT | P1-001, 2026-11-27. Breakwater-Content v2 mit explizitem Fußwegenetz und separaten Ortszugängen. Gemeinsames C++-Routing per Dijkstra bei 4 km/h im vorhandenen Takt. Reisen überdauern Steuerungswechsel und Disconnect im laufenden Host. Protokoll v2 prüft die Content-Kompatibilität und ersetzt die positions- und geldändernde Testaktion durch echte Reisebefehle mit äquivalenten Vertragsregressionen. |
 | D023 | VORGABE | 27.11.2026: Full-Viewport-Karte mit überlagerter UI, 360°-Rotation, dezente Dächer/Fenster ohne Balkone, Strand/Stege/Wassertiefenfarbverläufe und organischere Straßen. Semantische Weltplatzierung getrennt von Renderdetails, generatorfähiges Format. |
 | D024 | ENTWURF | Separate Visual-JSON und Theme auf Basis bestehender Content-Version 2; keine semantische Änderung für P1-004. OrthographicCamera mit unabhängiger Yaw, kartografische Palette, vereinfachte Gebäudeprofile, Depth-Textur/Farbrampe. P1-004 vor P1-002. |
+| D025 | IMPLEMENTIERT | P1-004, 2026-11-27. Breakwater nutzt Welt v2, Visual-Sidecar v1 und Coastal-Theme v1. Ein orthografischer Kamerapfad steuert unabhängigen Azimut und Zoomneigung. Der Renderer bündelt Geometrie nach Farbrollen, verankert die Wasserfarbrampe in der Welt und hält den Host als Quelle für Wege, Spielzeit und Charaktere. Die Weltdatei und der Protokollvertrag bleiben kompatibel. |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?

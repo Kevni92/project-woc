@@ -22,7 +22,7 @@ CMake bettet nur Welt v2 in native und WASM ein. Der C++-Adapter validiert darau
 - `decorations` enthält `pier` mit ID, Deckpolygon und `elevationM`. Ein Steg überquert eine angegebene physische Küstenlinie und besitzt Ecken auf beiden Seiten. Er ist rein dekorativ.
 - Das Theme definiert sRGB-Farbrollen für Tag und Nacht, einen Abstand für die Renderlayer, vier LOD-Schwellen, drei aufsteigende Wasserabstände in Metern, Strichmaße für Markierungen und Profilregeln für Dächer und Fassaden.
 
-`parseVisuals` und `parseTheme` prüfen JSON-Schema und Querverweise ohne DOM oder Three.js. Sie melden unbekannte Versionen, doppelte IDs, fehlende Referenzen, unpassende Höhen- und Breitenwerte sowie ungültige Geometrien. Die Dekorations-IDs sind über alle drei visuellen Geometrielisten und gegenüber Welt-IDs eindeutig. [Validatoren](../../client/src/render/visual-data.ts)
+`parseVisuals` und `parseTheme` prüfen JSON-Schema und Querverweise ohne DOM oder Three.js. Sie melden unbekannte Versionen, doppelte IDs, fehlende Referenzen, unpassende Höhen- und Breitenwerte sowie ungültige Geometrien. Die Dekorations-IDs sind über alle drei visuellen Geometrielisten und gegenüber Welt-IDs eindeutig. Beim Laden meldet das HUD einen Fehler im Sidecar oder Theme und hält Orts- und Charakterlisten verfügbar. [Validatoren](../../client/src/render/visual-data.ts)
 
 ## Generator und Build
 
@@ -31,6 +31,12 @@ Ein externer Exporter schreibt die Weltdatei und das Sidecar getrennt. Für repr
 Das unabhängige Cove-Fixture enthält ein JSON-Beispiel mit einer kurzen Straße, einem Haus, einem Strand und einem Pier. `npm --prefix client test -- visual-data.test.ts` lädt beide Karten und prüft ungültige Exporte. [Cove-Fixture](../../client/tests/fixtures/cove.json)
 
 Später sind metrische Chunks mit Manifest, räumlichem Index und LOD möglich. Raster-Tiles oder Vector Tiles bleiben Optionen für größere Karten.
+
+## Renderer
+
+`GeographyLayer` baut die statische Szene aus validierter Welt, Sidecar und Theme. `WaterLayer` sampelt die Küstendistanz einmal in einer linearen 8-bit-Textur. Der Shader liest sie in metrischen Koordinaten. Die opaken Landflächen liegen oberhalb des Wassers. An kartografischen Abschlüssen verlängert der Renderer den sichtbaren Landhintergrund und die angrenzenden Küstenlinien außerhalb der Weltgrenze.
+
+Straßen, Flächen und Gebäude verwenden gemeinsame Materialien und Geometriegruppen. Materialfarben und Uniforms ändern sich mit der Host-Spielzeit. Detailgruppen wechseln die Sichtbarkeit beim Zoom. Statische Puffer bleiben dabei erhalten. Routenpunkte kommen aus dem Host. Ein neuer Routenpuffer entsteht nur bei einer Änderung der Punktfolge.
 
 ## Recherche und Referenzen (27.11.2026)
 - GTA-V-Kacheln: https://viruxe.github.io/gtav-map-tiles/ — vorgefertigte WebP-XYZ-Zoomstufen; nützlich als späteres Streaming-Muster, kein Live-3D.

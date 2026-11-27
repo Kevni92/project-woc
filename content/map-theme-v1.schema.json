@@ -73,7 +73,7 @@
       "required": [
         "waterShallow", "waterMid", "waterDeep", "waterHorizon", "land", "district", "parcel", "beach", "plaza", "grass",
         "promenade", "roadEdge", "roadMain", "roadLocal", "marking", "roofResidential", "roofCommercial", "roofWarehouse",
-        "wall", "roofTrim", "window", "pier", "pierSupport", "selected", "label", "route"
+        "wall", "roofTrim", "window", "shadow", "pier", "pierSupport", "selected", "label", "route"
       ],
       "properties": {
         "waterShallow": { "$ref": "#/definitions/color" },
@@ -97,6 +97,7 @@
         "wall": { "$ref": "#/definitions/color" },
         "roofTrim": { "$ref": "#/definitions/color" },
         "window": { "$ref": "#/definitions/color" },
+        "shadow": { "$ref": "#/definitions/color" },
         "pier": { "$ref": "#/definitions/color" },
         "pierSupport": { "$ref": "#/definitions/color" },
         "selected": { "$ref": "#/definitions/color" },

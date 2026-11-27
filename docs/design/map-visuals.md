@@ -1,6 +1,14 @@
 # Weltkarte 2.0 — Art Direction, Kamera und HUD
-Status: VORGABE für Full-Viewport-Karte, überlagerte UI, 360°-Kamera, dezente Gebäudeformen/Dächer/Fenster, Strand, Wasserfarben, organische Straßen und generatorfähiges Datenformat. Konkrete Farben/Bedienung/Detailgrenzen sind ENTWURF.
+Status. P1-004 implementiert die Full-Viewport-Karte, das überlagerte HUD, freie Rotation, dezente Dächer und Fenster, Küstendetails und weichere Straßenübergänge. Die Referenzanalyse und die folgenden Designabschnitte dokumentieren die Ausgangsvorgaben.
 Grundlagen: [Welt](world.md), [Kartenformat](../architecture/map-format.md), [Task P1-004](../../tasks/P1-004-map-visual-upgrade.md).
+
+## Umsetzung in Breakwater
+
+- Eine orthografische Kamera dreht um den Bodenpunkt in der Bildschirmmitte. Rechtsziehen oder Umschalt + linkes Ziehen dreht kontinuierlich. Q/E und die sichtbaren Tasten drehen um 30°. Der Kompass richtet nach Norden aus. Fokus und Zoom erhalten die Ausrichtung.
+- Die Orts- und Charakterlisten klappen im Kartenmenü auf. Das Kontextfenster positioniert sich an der Auswahl, hält Abstand zum HUD und berücksichtigt benachbarte Marker. Auf schmalen oder flachen Fenstern sitzt es als scrollbares Panel über den Kartenbedienelementen.
+- Ab 650 m vertikaler Spanne sind Gebäude flach. Bis 135 m steigen die Baukörper auf ihre volle Höhe. Unter 125 m erscheinen die Fassaden, unter 420 m die Straßenmarkierungen. Rechteckige Wohnhäuser tragen Satteldächer entlang der Längsachse. Geschäftsgebäude zeigen eine einfache Attika und Lagerhallen einen flachen Dachaufsatz. Die Tag- und Nachtwerte stehen im Coastal-Theme. [Theme](../../content/themes/coastal.json)
+- Das Kartenwasser nutzt eine 512² große Distanztextur mit 32, 155 und 610 m als Anker der Farbrampe. An den künstlichen Begrenzungen setzen sich der Landhintergrund und die dort endende Küstenlinie optisch fort. Die Wasserfarben bleiben an feste Weltkoordinaten gebunden. Pierdecks und Stützen sind dekorative Geometrie.
+- Straßen behalten ihre Achsen und Breiten. Gerundete Korridorstreifen und getrennte Füllfarben für Haupt- und Nebenstraßen zeichnen zusammenhängende Kreuzungen. Mittelmarkierungen werden an Kreuzungen ausgespart.
 
 ## Referenzanalyse (Nutzeraufnahmen, 27.11.2026)
 Erste Aufnahme 36,8 s: aktuelles Breakwater; ca. 1–22 s quaderartige Häuser, starre Straßen, eingerahmtes Canvas mit Header/Sidebar; ca. 29 s flache Übersicht, ca. 36 s Nahansicht. Gute Basis: kontinuierlicher Wechsel, sichtbare Marker, Auswahl und Fokus.
