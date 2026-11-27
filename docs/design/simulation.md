@@ -1,0 +1,17 @@
+# Weltsimulation
+Status: ENTWURF
+
+## Zeit
+Eine zentrale GameClock speichert absolute Spielminuten, aus denen Tag und Uhrzeit folgen. Entwurfswert: 1 reale Sekunde = 1 Spielminute (24 reale Minuten pro Spieltag); konfigurierbar. Pause/Fortsetzen sowie Zeitfaktor für Debugging. Kein Fortschritt bei geschlossenem Browser in P0–P2; Tab-Hintergrund bewusst pausieren statt unkontrollierte Catch-up-Sprünge. Zeitregeln später überprüfen.
+Ein fester Simulationstakt unabhängig von Render-FPS; Ereignisse mit gleicher Fälligkeit werden in stabiler Reihenfolge verarbeitet. Gesäte Zufallszahlen für reproduzierbare Tests.
+
+## Bewegung
+Spieler klickt Ziel, wählt Gehen oder verfügbares Auto und sieht Route und ETA. A* auf einem einfachen Wegegraphen (Dijkstra zunächst ebenfalls ausreichend). Distanz und Geschwindigkeit bestimmen Spielzeit; Bewegung läuft im Simulationstakt, Renderer interpoliert Marker. Beispielwerte: 4 km/h Fuß, 30 km/h Auto; keine realistische Verkehrssimulation nötig. Auto muss am Start verfügbar sein; Abstellen und Standort bleiben erhalten. Abbruch/Neuziel als späterer Schritt; Ankunft genau einmal auslösen.
+
+## NPCs
+Ein NPC besitzt ID, Name, Wohnort, Arbeitsort, Position, Tagesplan und aktuelle Aktivität. Start mit 5–10 persistenten NPCs. Beispiel: 07:30 zur Arbeit, 08:00–16:00 arbeiten, 17:00 Laden/Café, ab 20:00 zuhause. Reisezeiten berücksichtigen; bei Verspätung nächste Aktivität konsistent wählen. Keine Teleportation zwischen Orten.
+Zustände: Idle, Traveling, PerformingActivity, Sleeping. Entscheidungslogik zunächst feste Zeitpläne und Regeln. Später Bedürfnisse (Hunger, Energie, Geld), Beziehungen und Utility AI. NPCs sollen auf Ereignisse reagieren können (Ort geschlossen, Angebot geändert), ohne für jeden NPC pro Frame KI auszuführen.
+NPCs außerhalb sichtbarer Karte bleiben simuliert; später fällige Ereignisse und räumliche Indizes statt Vollsimulation jeder Figur pro Frame.
+
+## Testkriterien
+Gleicher Startzustand, Seed und Befehlsverlauf erzeugen gleiche Ergebnisse; NPC erreicht Arbeitsort, reist heim; Tageswechsel korrekt; Ankunft einmalig; Render-FPS verändert Zeit/Position nicht. P0 hat nur Demo-Marker und optionale manuelle Tag-/Nachtvorschau; echte Uhr/Bewegung in P1.
