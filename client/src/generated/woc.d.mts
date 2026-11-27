@@ -2,6 +2,7 @@ export interface WocModule {
   readonly HEAPU8: Uint8Array;
   _malloc(length: number): number;
   _free(address: number): void;
+  _woc_init(manifest: number, manifestLength: number, world: number, worldLength: number): number;
   _woc_open(connection: number): void;
   _woc_close(connection: number): void;
   _woc_receive(connection: number, address: number, length: number): void;

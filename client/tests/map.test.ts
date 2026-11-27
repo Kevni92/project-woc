@@ -1,8 +1,8 @@
 import { Raycaster, Vector2, Vector3 } from 'three';
 import { describe, expect, test } from 'vitest';
-import definition from '../../content/breakwater.json';
-import { city, parseCity } from '../src/render/city-data';
-import { loadBreakwaterStyle } from '../src/render/breakwater-style';
+import { parseCity } from '../src/render/city-data';
+import { parseTheme, parseVisuals } from '../src/render/visual-data';
+import { packageJson } from './package-files';
 import { longRectangle } from '../src/render/building-layer';
 import type { Point } from '../src/render/city-data';
 import { GeographyLayer } from '../src/render/geography-layer';
@@ -15,7 +15,10 @@ import { segments } from '../src/render/map-geometry';
 import type { ClientState } from '../src/simulation/simulation-client';
 import { projectMap } from '../src/ui/map-projection';
 
-const { theme, visuals } = loadBreakwaterStyle();
+const definition = packageJson('breakwater', 'world.json');
+const city = parseCity(definition);
+const theme = parseTheme(packageJson('breakwater', 'theme.json'));
+const visuals = parseVisuals(packageJson('breakwater', 'visual.json'), city, theme);
 
 function contains(polygon: readonly Point[], [x, z]: Point): boolean {
   let inside = false;

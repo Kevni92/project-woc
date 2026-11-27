@@ -1,7 +1,8 @@
 import Ajv from 'ajv';
-import serverSchema from '../../../protocol/server-v2.schema.json';
+import serverSchema from '../../../protocol/server-v3.schema.json';
+import type { WorldIdentity } from '../content/world-package';
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export type Command =
   | { action: 'AcquireCharacter' | 'ReleaseCharacter'; characterId: string }
   | { action: 'MoveTo'; characterId: string; locationId: string };
@@ -75,9 +76,7 @@ interface ServerEnvelope {
 }
 
 export type ServerMessage = ServerEnvelope & (
-  | { type: 'Welcome'; requestId: string; payload: {
-      sessionId: string; worldId: string; contentVersion: number; capabilities: string[];
-    } }
+  | { type: 'Welcome'; requestId: string; payload: WorldIdentity & { sessionId: string; capabilities: string[] } }
   | { type: 'Snapshot'; payload: Projection }
   | { type: 'Delta'; payload: Projection & { baseRevision: number } }
   | { type: 'CommandResult'; requestId: string; payload: CommandResult }

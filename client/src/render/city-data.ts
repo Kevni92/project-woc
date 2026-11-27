@@ -1,7 +1,6 @@
 import Ajv from 'ajv';
-import definition from '../../../content/breakwater.json';
 import schema from '../../../content/city-v2.schema.json';
-import { segments } from './map-geometry';
+import { isSimpleRing, segments } from './map-geometry';
 
 export type Point = readonly [x: number, z: number];
 type Polygon = readonly Point[];
@@ -105,9 +104,7 @@ export function parseCity(value: unknown): City {
     throw new Error('Kartenpunkt außerhalb der Kartengrenzen.');
   }
   for (const polygon of polygons) {
-    let area = 0;
-    for (const [[x, z], [nextX, nextZ]] of segments(polygon, true)) area += x * nextZ - nextX * z;
-    if (area === 0) throw new Error('Kartenpolygon ohne Fläche.');
+    if (!isSimpleRing(polygon)) throw new Error('Ungültige Fläche im Kartenpolygon.');
   }
   for (const road of roads) segments(road.path, false);
 
@@ -132,5 +129,3 @@ export function parseCity(value: unknown): City {
   for (const edge of navigation.edges) segments(edge.path, false);
   return value;
 }
-
-export const city = parseCity(definition);

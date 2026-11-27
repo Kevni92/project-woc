@@ -1,4 +1,5 @@
 #include "protocol/endpoint.hpp"
+#include "hosts/native/package_io.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast/websocket.hpp>
@@ -28,8 +29,9 @@ class Peer;
 
 class Server {
 public:
-    Server(asio::io_context& io, unsigned short port, bool manual_clock)
-        : acceptor_(io, {asio::ip::address_v4::loopback(), port}), timer_(io) {
+    Server(asio::io_context& io, unsigned short port, bool manual_clock, woc::content::LoadedWorld world)
+        : endpoint_(std::move(world.definition), world.revision, std::move(world.semantic_hash)),
+          acceptor_(io, {asio::ip::address_v4::loopback(), port}), timer_(io) {
         accept();
         if (!manual_clock) {
             schedule_tick();
@@ -70,9 +72,9 @@ private:
         });
     }
 
+    woc::protocol::Endpoint endpoint_;
     tcp::acceptor acceptor_;
     asio::steady_timer timer_;
-    woc::protocol::Endpoint endpoint_;
     std::map<ConnectionId, std::weak_ptr<Peer>> peers_;
     ConnectionId next_connection_ = 1;
 };
@@ -187,12 +189,15 @@ void Server::deliver(Deliveries messages) {
 int main(int argc, char** argv) {
     unsigned short port = 8765;
     ClockMode clock = ClockMode::realtime;
+    std::filesystem::path package = woc::native::default_package;
     for (int i = 1; i < argc; ++i) {
         const std::string_view argument = argv[i];
         if (argument == "--manual-clock") {
             clock = ClockMode::frozen;
         } else if (argument == "--manual-clock-stdin") {
             clock = ClockMode::stdin_ticks;
+        } else if (argument == "--world" && i + 1 < argc) {
+            package = argv[++i];
         } else if (argument == "--port" && i + 1 < argc) {
             const std::string_view value = argv[++i];
             const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), port);
@@ -201,14 +206,14 @@ int main(int argc, char** argv) {
                 return 1;
             }
         } else {
-            std::cerr << "Usage: woc_server [--port PORT] [--manual-clock | --manual-clock-stdin]\n";
+            std::cerr << "Usage: woc_server [--world DIRECTORY] [--port PORT] [--manual-clock | --manual-clock-stdin]\n";
             return 1;
         }
     }
 
     try {
         asio::io_context io;
-        Server server(io, port, clock != ClockMode::realtime);
+        Server server(io, port, clock != ClockMode::realtime, woc::native::read_package(package));
         std::cout << "ws://127.0.0.1:" << server.port() << '\n' << std::flush;
         if (clock == ClockMode::stdin_ticks) {
             // The contract harness drives time over stdin. WebSocket peers

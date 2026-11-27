@@ -8,8 +8,13 @@ export function binary(name: string): string {
   return fileURLToPath(new URL('../../build/native/' + name + suffix, import.meta.url));
 }
 
-export async function startServer(manual: boolean) {
+export function packagePath(world: string) {
+  return fileURLToPath(new URL('../../content/public/worlds/' + world + '/', import.meta.url));
+}
+
+export async function startServer(manual: boolean, world = 'breakwater') {
   const command = manual ? ['--port', '0', '--manual-clock-stdin'] : ['--port', '0'];
+  command.push('--world', packagePath(world));
   const child = spawn(binary('woc_server'), command, { stdio: ['pipe', 'pipe', 'pipe'] });
   const lines = createInterface({ input: child.stdout });
   let diagnostic = '';

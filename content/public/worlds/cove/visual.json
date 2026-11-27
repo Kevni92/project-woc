@@ -1,0 +1,84 @@
+{
+  "visualVersion": 1,
+  "worldId": "cove",
+  "worldVersion": 2,
+  "buildings": [
+    {
+      "buildingId": "clubhouse",
+      "profile": "residential",
+      "roofHeightM": 2
+    }
+  ],
+  "roads": [
+    {
+      "roadId": "main-lane",
+      "profile": "main",
+      "sidewalkWidthM": 1
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "cove-sands",
+      "kind": "beach",
+      "polygon": [
+        [
+          46,
+          50
+        ],
+        [
+          60,
+          45
+        ],
+        [
+          60,
+          75
+        ],
+        [
+          52,
+          77
+        ]
+      ]
+    }
+  ],
+  "coasts": [
+    {
+      "id": "east-coast",
+      "path": [
+        [
+          60,
+          0
+        ],
+        [
+          60,
+          100
+        ]
+      ]
+    }
+  ],
+  "decorations": [
+    {
+      "id": "small-pier",
+      "kind": "pier",
+      "polygon": [
+        [
+          56,
+          62
+        ],
+        [
+          86,
+          62
+        ],
+        [
+          87,
+          71
+        ],
+        [
+          56,
+          70
+        ]
+      ],
+      "elevationM": 1.5
+    }
+  ],
+  "revision": 1
+}

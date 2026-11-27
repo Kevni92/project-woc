@@ -1,4 +1,4 @@
-import city from '../../../content/breakwater.json';
+import type { WorldIdentity } from '../content/world-package';
 import { decodeServer, PROTOCOL_VERSION } from './protocol';
 import type { Command, CommandResult, Request, RoutePreviewResult, ServerMessage, View } from './protocol';
 import type { Transport, TransportFactory } from './transport';
@@ -36,7 +36,7 @@ export class SimulationClient {
   private readonly pending = new Map<string, PendingReply>();
   private readonly listeners = new Set<(state: ClientState) => void>();
 
-  constructor(private readonly factory: TransportFactory) {}
+  constructor(private readonly factory: TransportFactory, private readonly world: WorldIdentity) {}
 
   subscribe(listener: (state: ClientState) => void): () => void {
     this.listeners.add(listener);
@@ -175,9 +175,10 @@ export class SimulationClient {
     switch (message.type) {
       case 'Welcome':
         if (this.pending.get(requestId)?.expected === 'Welcome') {
-          const { worldId, contentVersion, capabilities } = message.payload;
-          if (worldId !== city.id || contentVersion !== city.version) {
-            this.stop(new Error('INCOMPATIBLE_CITY_CONTENT'));
+          const { worldId, worldSchemaVersion, worldRevision, semanticHash, capabilities } = message.payload;
+          if (worldId !== this.world.worldId || worldSchemaVersion !== this.world.worldSchemaVersion
+            || worldRevision !== this.world.worldRevision || semanticHash !== this.world.semanticHash) {
+            this.stop(new Error('INCOMPATIBLE_WORLD_PACKAGE'));
             return;
           }
           if (!capabilities.includes('FootTravel')) {

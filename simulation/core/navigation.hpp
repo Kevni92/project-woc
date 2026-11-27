@@ -59,6 +59,7 @@ public:
     [[nodiscard]] const auto& edges() const { return edges_; }
 
     [[nodiscard]] bool valid(GraphPosition position) const;
+    [[nodiscard]] std::vector<bool> reachable_from(NodeIndex start) const;
     [[nodiscard]] Position point(GraphPosition position) const;
     [[nodiscard]] std::optional<Route> route(GraphPosition from, NodeIndex to) const;
     [[nodiscard]] GraphPosition position_on(const Route& route, Distance traveled) const;

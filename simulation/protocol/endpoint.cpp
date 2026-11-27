@@ -1,15 +1,15 @@
 #include "protocol/endpoint.hpp"
-#include "content/city.hpp"
 
 #include <algorithm>
 #include <initializer_list>
 #include <nlohmann/json.hpp>
+#include <utility>
 
 namespace woc::protocol {
 namespace {
 
 using Json = nlohmann::json;
-constexpr int version = 2;
+constexpr int version = 3;
 constexpr std::size_t command_history_size = 64;
 
 std::string_view error_code(Rejection rejection) {
@@ -133,7 +133,8 @@ std::string encode(
 
 }
 
-Endpoint::Endpoint() : host_(content::breakwater()) {}
+Endpoint::Endpoint(WorldDefinition definition, unsigned world_revision, std::string semantic_hash)
+    : host_(std::move(definition)), world_revision_(world_revision), semantic_hash_(std::move(semantic_hash)) {}
 
 void Endpoint::open(ConnectionId connection) {
     connections_.try_emplace(connection);
@@ -193,10 +194,11 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
         return deliveries;
     }
     if (message["protocolVersion"] != version) {
-        // A v1 client can read the rejection using its own error envelope.
+        // Older clients can read the rejection using their own error envelope.
+        const auto& requested = message["protocolVersion"];
+        const int error_version = requested == 1 ? 1 : requested == 2 ? 2 : version;
         deliveries.push_back({id, encode(connection.sequence, "Error", request_id,
-            {{"code", "UNSUPPORTED_VERSION"}}, host_.world_tick(),
-            message["protocolVersion"] == 1 ? 1 : version)});
+            {{"code", "UNSUPPORTED_VERSION"}}, host_.world_tick(), error_version)});
         return deliveries;
     }
 
@@ -212,7 +214,8 @@ Deliveries Endpoint::receive(ConnectionId id, std::string_view wire) {
             connection.last_view = host_.view(*connection.session);
             send("Welcome", {
                 {"sessionId", "session-" + std::to_string(*connection.session)},
-                {"worldId", host_.definition().id}, {"contentVersion", host_.definition().version},
+                {"worldId", host_.definition().id}, {"worldSchemaVersion", host_.definition().version},
+                {"worldRevision", world_revision_}, {"semanticHash", semantic_hash_},
                 {"capabilities", Json::array({"CharacterControl", "FootTravel", "SnapshotDelta"})},
             });
             send("Snapshot", projection(*connection.last_view, host_.definition().navigation), false);

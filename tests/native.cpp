@@ -1,4 +1,5 @@
 #include "content/city.hpp"
+#include "hosts/native/package_io.hpp"
 #include "protocol/endpoint.hpp"
 
 #include <algorithm>
@@ -62,10 +63,10 @@ void test_routing() {
 }
 
 void test_content() {
-    const auto& city = content::breakwater();
+    const auto& city = native::read_package(native::default_package).definition;
     const auto& graph = city.navigation;
     check(city.version == 2 && city.locations.size() == 6 && graph.nodes()[city.start].point == Position{0, 0},
-        "embedded Breakwater with six access points");
+        "Breakwater package with six access points");
     for (const auto& [id, access] : city.locations) {
         const auto route = graph.route({.node = city.start}, access).value();
         const auto points = graph.geometry(route);
@@ -85,7 +86,7 @@ void test_content() {
     check(connects("j-372-23", "j-n245-104", "j-292-23"), "library joins Civic Avenue");
     check(graph.point(city.spawns[1]) == Position{10000, 4000}, "Ben starts inside a civic edge");
 
-    std::ifstream file("content/breakwater.json");
+    std::ifstream file("content/public/worlds/breakwater/world.json");
     const auto original = json::parse(file);
     const auto reject = [&](const auto& edit, std::string_view error) {
         auto altered = original;
@@ -98,10 +99,10 @@ void test_content() {
         }
         check(false, error);
     };
-    reject([](auto& data) { data["navigation"]["edges"][0]["lengthMm"] = 0; }, "invalid length");
+    reject([](auto& data) { data["navigation"]["edges"][0]["lengthMm"] = 0; }, "/lengthMm");
     reject([](auto& data) { data["navigation"]["edges"][0]["lengthMm"] = 1; }, "Incorrect navigation length");
     reject([](auto& data) { data["navigation"]["edges"][0]["path"][0] = {0, 0}; }, "Invalid navigation edge");
-    reject([](auto& data) { data["navigation"]["edges"][0]["mode"] = "car"; }, "unsupported edge mode");
+    reject([](auto& data) { data["navigation"]["edges"][0]["mode"] = "car"; }, "/mode");
     reject([](auto& data) { data["navigation"]["nodes"].push_back(data["navigation"]["nodes"][0]); }, "duplicate node");
     reject([](auto& data) { data["navigation"]["edges"].push_back(data["navigation"]["edges"][0]); }, "duplicate edge");
     reject([](auto& data) { data["navigation"]["edges"].erase(0); }, "disconnected node");
@@ -115,7 +116,7 @@ void test_content() {
 }
 
 void test_movement() {
-    World world(content::breakwater());
+    World world(native::read_package(native::default_package).definition);
     check(walking_ticks(0) == 0 && walking_ticks(66666) == 1 && walking_ticks(66667) == 2
         && walking_ticks(200000) == 3 && walking_ticks(200001) == 4, "ETA rounds once");
     for (int i = 0; i < 958; ++i) static_cast<void>(world.advance());
@@ -152,7 +153,7 @@ void test_movement() {
 }
 
 void test_simulation() {
-    SimulationHost host(content::breakwater());
+    SimulationHost host(native::read_package(native::default_package).definition);
     const auto left = host.connect();
     const auto right = host.connect();
     using enum CommandKind;
@@ -188,7 +189,8 @@ void test_simulation() {
 }
 
 void test_protocol() {
-    woc::protocol::Endpoint endpoint;
+    auto loaded = native::read_package(native::default_package);
+    woc::protocol::Endpoint endpoint(std::move(loaded.definition), loaded.revision, loaded.semantic_hash);
     endpoint.open(1);
     auto receive = [&](const json& wire) { return endpoint.receive(1, wire.dump()); };
     auto request = [](int version, const char* type, const char* id, json payload = json::object()) {
@@ -201,17 +203,19 @@ void test_protocol() {
     const auto incompatible = content(receive(request(1, "Hello", "old")).at(0));
     check(incompatible["protocolVersion"] == 1 && incompatible["payload"]["code"] == "UNSUPPORTED_VERSION",
         "old client can read its version rejection");
-    check(content(receive(request(2, "SnapshotRequest", "first")).at(0))["payload"]["code"] == "HELLO_REQUIRED",
+    check(content(receive(request(3, "SnapshotRequest", "first")).at(0))["payload"]["code"] == "HELLO_REQUIRED",
         "handshake required");
 
-    const auto hello = receive(request(2, "Hello", "hello"));
+    const auto hello = receive(request(3, "Hello", "hello"));
     check(hello.size() == 2 && content(hello[0])["type"] == "Welcome"
-        && content(hello[0])["payload"]["contentVersion"] == 2
+        && content(hello[0])["payload"]["worldSchemaVersion"] == 2
+        && content(hello[0])["payload"]["worldRevision"] == 1
+        && content(hello[0])["payload"]["semanticHash"] == loaded.semantic_hash
         && content(hello[1])["type"] == "Snapshot", "welcome and initial snapshot");
     check(!content(hello[1]).contains("requestId") && content(hello[1])["streamSeq"] == 5,
         "initial snapshot has sequence but no correlation ID");
 
-    auto acquire = request(2, "Command", "acquire", {{"action", "AcquireCharacter"}, {"characterId", "resident-ada"}});
+    auto acquire = request(3, "Command", "acquire", {{"action", "AcquireCharacter"}, {"characterId", "resident-ada"}});
     acquire["sessionId"] = "session-42";
     check(content(receive(acquire).at(0))["payload"]["code"] == "INVALID_MESSAGE", "reject forged session");
     acquire.erase("sessionId");
@@ -219,10 +223,10 @@ void test_protocol() {
     check(control.size() == 2 && content(control[1])["payload"]["baseRevision"] == 0, "acquire delta");
 
     auto booking = json{{"characterId", "resident-ada"}, {"locationId", "workshop"}};
-    const auto preview = receive(request(2, "RoutePreview", "preview", booking));
+    const auto preview = receive(request(3, "RoutePreview", "preview", booking));
     check(preview.size() == 1 && content(preview[0])["payload"]["positionRevision"] == 0, "read-only preview");
     booking["action"] = "MoveTo";
-    auto action = request(2, "Command", "action", booking);
+    auto action = request(3, "Command", "action", booking);
     action["payload"]["durationTicks"] = 0;
     check(content(receive(action).at(0))["payload"]["code"] == "INVALID_MESSAGE", "reject client time");
     action["payload"].erase("durationTicks");

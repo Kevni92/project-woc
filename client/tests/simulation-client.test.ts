@@ -1,6 +1,6 @@
 import Ajv from 'ajv';
 import { describe, expect, it } from 'vitest';
-import schema from '../../protocol/client-v2.schema.json';
+import schema from '../../protocol/client-v3.schema.json';
 import { decodeServer, PROTOCOL_VERSION } from '../src/simulation/protocol';
 import type { ControlledCharacter, ServerMessage } from '../src/simulation/protocol';
 import { SimulationClient } from '../src/simulation/simulation-client';
@@ -11,9 +11,8 @@ type Snapshot = Extract<ServerMessage, { type: 'Snapshot' }>;
 const character = {
   id: 'resident-ada', name: 'Ada', eligible: true, occupied: false, position: { x: 0, z: 0 }, status: 'Idle',
 } as const;
-const welcome = {
-  sessionId: 'session-1', worldId: 'p0-test-world', contentVersion: 2, capabilities: ['FootTravel'],
-};
+const world = { worldId: 'p0-test-world', worldSchemaVersion: 2, worldRevision: 1, semanticHash: 'a'.repeat(64) };
+const welcome = { sessionId: 'session-1', ...world, capabilities: ['FootTravel'] };
 const baseline: Snapshot['payload'] = {
   revision: 0, gameMinutes: 480, characters: [character], controlled: null,
 };
@@ -66,7 +65,7 @@ function envelope(streamSeq: number) {
 
 async function connect() {
   const transport = new TestTransport();
-  const client = new SimulationClient(() => transport);
+  const client = new SimulationClient(() => transport, world);
   let state: ClientState;
   client.subscribe(value => { state = value; });
   await client.connect();
@@ -143,11 +142,13 @@ describe('SimulationClient', () => {
   });
 
   it.each([
-    [{ worldId: 'another-city' }, 'INCOMPATIBLE_CITY_CONTENT'],
-    [{ contentVersion: 1 }, 'INCOMPATIBLE_CITY_CONTENT'],
+    [{ worldId: 'another-city' }, 'INCOMPATIBLE_WORLD_PACKAGE'],
+    [{ worldSchemaVersion: 1 }, 'INVALID_SERVER_MESSAGE'],
+    [{ worldRevision: 2 }, 'INCOMPATIBLE_WORLD_PACKAGE'],
+    [{ semanticHash: 'b'.repeat(64) }, 'INCOMPATIBLE_WORLD_PACKAGE'],
     [{ capabilities: [] }, 'MISSING_FOOT_TRAVEL'],
   ])('rejects incompatible Welcome data before accepting the snapshot', async (changes, code) => {
-    const client = new SimulationClient(() => new TestTransport({ ...welcome, ...changes }));
+    const client = new SimulationClient(() => new TestTransport({ ...welcome, ...changes }), world);
     let state: ClientState | undefined;
     client.subscribe(value => { state = value; });
     await expect(client.connect()).rejects.toThrow(code);
@@ -157,7 +158,7 @@ describe('SimulationClient', () => {
 
 it('validates movement messages and rejects client-supplied progress or legacy envelopes', () => {
   const validate = new Ajv().compile(schema);
-  const request = { protocolVersion: 2, type: 'Command', requestId: 'r',
+  const request = { protocolVersion: 3, type: 'Command', requestId: 'r',
     payload: { action: 'MoveTo', characterId: character.id, locationId: 'market' } };
   expect(validate(request)).toBe(true);
   expect(validate({ ...request, payload: { ...request.payload, durationTicks: 1 } })).toBe(false);

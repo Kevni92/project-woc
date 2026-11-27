@@ -1,4 +1,5 @@
 import { decodeServer } from '../src/simulation/protocol';
+import { loadWorldPackage, worldPackageUrl, type WorldIdentity } from '../src/content/world-package';
 import type { ServerMessage } from '../src/simulation/protocol';
 import { SimulationClient } from '../src/simulation/simulation-client';
 import type { ClientState } from '../src/simulation/simulation-client';
@@ -17,9 +18,12 @@ const connections = new Map<number, Transport>();
 const deliveries: Delivery[] = [];
 let factory: TransportFactory;
 let tick: (() => void) | undefined;
+let identity: WorldIdentity;
 
-export function start(mode: Mode, url: string): void {
-  const wasm = mode === 'wasm' ? createManualWasmHost() : undefined;
+export async function start(mode: Mode, url: string, slug: string): Promise<void> {
+  const world = await loadWorldPackage(worldPackageUrl(new URLSearchParams({ world: slug }), new URL('/', location.href)));
+  const wasm = mode === 'wasm' ? createManualWasmHost(world.init) : undefined;
+  identity = world.identity;
   factory = wasm?.factory ?? (() => new WebSocketTransport(url));
   tick = wasm?.tick;
 }
@@ -76,7 +80,7 @@ export async function simulateGap(): Promise<void> {
       transport.send(wire);
     },
     close: () => transport.close(),
-  }));
+  }), identity);
   client.subscribe(value => { state = value; });
   await client.connect();
   const control = await client.acquireCharacter('resident-ada');

@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["packageVersion", "worldId", "displayName", "worldSchemaVersion", "worldRevision", "visualRevision", "bounds", "units", "axes", "scaleFactor", "files", "semanticHash"],
+  "properties": {
+    "packageVersion": { "const": 1 },
+    "worldId": { "$ref": "#/definitions/id" },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "worldSchemaVersion": { "const": 2 },
+    "worldRevision": { "$ref": "#/definitions/revision" },
+    "visualRevision": { "$ref": "#/definitions/revision" },
+    "themeRevision": { "$ref": "#/definitions/revision" },
+    "semanticHash": { "$ref": "#/definitions/hash" },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "maxX", "minZ", "maxZ"],
+      "properties": {
+        "minX": { "$ref": "#/definitions/coordinate" }, "maxX": { "$ref": "#/definitions/coordinate" },
+        "minZ": { "$ref": "#/definitions/coordinate" }, "maxZ": { "$ref": "#/definitions/coordinate" }
+      }
+    },
+    "units": { "const": "m" },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "z", "y"],
+      "properties": { "x": { "const": "east" }, "z": { "const": "south" }, "y": { "const": "up" } }
+    },
+    "scaleFactor": { "type": "number", "exclusiveMinimum": 0 },
+    "sourceCRS": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "origin": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": [{ "type": "number", "minimum": -180, "maximum": 180 }, { "type": "number", "minimum": -90, "maximum": 90 }]
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["world", "visual", "theme", "provenance"],
+      "properties": {
+        "world": { "$ref": "#/definitions/worldFile" },
+        "visual": { "$ref": "#/definitions/visualFile" },
+        "theme": { "$ref": "#/definitions/themeFile" },
+        "provenance": { "$ref": "#/definitions/provenanceFile" }
+      }
+    },
+    "modules": {
+      "type": "array", "maxItems": 32,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["role", "schemaVersion", "capability", "path", "bytes", "sha256"],
+        "properties": {
+          "role": { "$ref": "#/definitions/id" }, "schemaVersion": { "$ref": "#/definitions/revision" },
+          "capability": { "$ref": "#/definitions/id" },
+          "path": { "type": "string", "pattern": "^gameplay/[a-z0-9]+(?:-[a-z0-9]+)*\\.json$", "maxLength": 80 },
+          "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "id": { "type": "string", "maxLength": 64, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "hash": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]+$" },
+    "revision": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "coordinate": { "type": "number", "minimum": -10000, "maximum": 10000 },
+    "largeSize": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+    "smallSize": { "type": "integer", "minimum": 1, "maximum": 131072 },
+    "worldFile": {
+      "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
+      "properties": { "path": { "const": "world.json" }, "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+    },
+    "visualFile": {
+      "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
+      "properties": { "path": { "const": "visual.json" }, "bytes": { "$ref": "#/definitions/largeSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+    },
+    "themeFile": {
+      "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
+      "properties": { "path": { "const": "theme.json" }, "bytes": { "$ref": "#/definitions/smallSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+    },
+    "provenanceFile": {
+      "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
+      "properties": { "path": { "const": "provenance.json" }, "bytes": { "$ref": "#/definitions/smallSize" }, "sha256": { "$ref": "#/definitions/hash" } }
+    }
+  }
+}

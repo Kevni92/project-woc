@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { city } from '../render/city-data';
+  import type { City } from '../render/city-data';
   import type { CommandResult } from '../simulation/protocol';
   import type { ClientState, SimulationClient } from '../simulation/simulation-client';
 
-  const { client, title }: { client: SimulationClient; title: string } = $props();
+  const { client, city, title }: { client: SimulationClient; city: City; title: string } = $props();
   let session: ClientState | undefined = $state();
   let pending = $state(false);
   let actionError: string | null = $state(null);

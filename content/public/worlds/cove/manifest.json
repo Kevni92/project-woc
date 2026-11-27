@@ -1,0 +1,45 @@
+{
+  "packageVersion": 1,
+  "worldId": "cove",
+  "displayName": "Cove",
+  "worldSchemaVersion": 2,
+  "worldRevision": 1,
+  "visualRevision": 1,
+  "themeRevision": 1,
+  "bounds": {
+    "minX": 0,
+    "minZ": 0,
+    "maxX": 120,
+    "maxZ": 100
+  },
+  "units": "m",
+  "axes": {
+    "x": "east",
+    "z": "south",
+    "y": "up"
+  },
+  "scaleFactor": 1,
+  "files": {
+    "world": {
+      "path": "world.json",
+      "bytes": 3590,
+      "sha256": "8327a4f6cdc7d8da83b7369b82fc53f5199e7acbf04c7d6fd67d55d0d69631d4"
+    },
+    "visual": {
+      "path": "visual.json",
+      "bytes": 1119,
+      "sha256": "e36ed99753cca20e981de2b587ae08667fc620a81708cf92b6591b3435543303"
+    },
+    "theme": {
+      "path": "theme.json",
+      "bytes": 2330,
+      "sha256": "7a103f2fd174aa59b4de3addc7d14d94106c24f66120ef9ca8b030086ec6ac8c"
+    },
+    "provenance": {
+      "path": "provenance.json",
+      "bytes": 75,
+      "sha256": "4c97bcc1bbdf1c7b139028c523398a3253f77860a6d301f57a8bbf562f3a2895"
+    }
+  },
+  "semanticHash": "8327a4f6cdc7d8da83b7369b82fc53f5199e7acbf04c7d6fd67d55d0d69631d4"
+}

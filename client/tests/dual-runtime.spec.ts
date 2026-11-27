@@ -3,64 +3,70 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Delivery, Frame, Mode } from './contract-harness';
-import { binary, startServer } from './native-host';
+import { binary, packagePath, startServer } from './native-host';
 
 const devUrl = 'http://127.0.0.1:4174';
 const modes: Mode[] = ['wasm', 'ws'];
-const frames = JSON.parse(readFileSync(
-  new URL('../../protocol/fixtures/dual-runtime.json', import.meta.url), 'utf8',
-)) as Frame[];
+function fixture(name: string): Frame[] {
+  return JSON.parse(readFileSync(new URL('../../protocol/fixtures/' + name + '.json', import.meta.url), 'utf8'));
+}
 
-function nativeTranscript(): Delivery[][] {
+function nativeTranscript(frames: Frame[], world: string): Delivery[][] {
   const input = frames.map(frame => JSON.stringify(frame)).join('\n') + '\n';
-  const output = execFileSync(binary('woc_cli'), { input, encoding: 'utf8', timeout: 5000 });
+  const output = execFileSync(binary('woc_cli'), ['--world', packagePath(world)], { input, encoding: 'utf8', timeout: 5000 });
   return output.trim().split(/\r?\n/).map(line => JSON.parse(line) as Delivery[]);
 }
 
-async function startHarness(page: Page, mode: Mode, url: string) {
+async function startHarness(page: Page, mode: Mode, url: string, world = 'breakwater') {
   await page.goto(devUrl + '/?view=debug');
-  await page.evaluate(async ({ mode, url }) => {
+  await page.evaluate(async ({ mode, url, world }) => {
     const modulePath = '/tests/contract-harness.ts';
     const harness: typeof import('./contract-harness') = await import(modulePath);
-    harness.start(mode, url);
-  }, { mode, url });
+    await harness.start(mode, url, world);
+  }, { mode, url, world });
 }
 
 const byConnection = (a: Delivery, b: Delivery) =>
   a.connection - b.connection || a.message.streamSeq - b.message.streamSeq;
+
+async function compareTranscript(page: Page, frames: Frame[], world: string, tick?: () => void) {
+  const expected = nativeTranscript(frames, world);
+  expect(expected).toHaveLength(frames.length);
+  let received: Delivery[] = [];
+  let count = 0;
+  for (const [i, frame] of frames.entries()) {
+    if (frame.op === 'tick' && tick) {
+      tick();
+    } else {
+      await page.evaluate(async frame => {
+        const modulePath = '/tests/contract-harness.ts';
+        const harness: typeof import('./contract-harness') = await import(modulePath);
+        await harness.apply(frame);
+      }, frame);
+    }
+    const snapshot = async () => page.evaluate(async () => {
+      const modulePath = '/tests/contract-harness.ts';
+      const harness: typeof import('./contract-harness') = await import(modulePath);
+      return harness.transcript();
+    });
+    await expect.poll(async () => {
+      received = await snapshot();
+      return received.length;
+    }).toBe(count + expected[i].length);
+    expect(received.slice(count).sort(byConnection), JSON.stringify(frame))
+      .toEqual([...expected[i]].sort(byConnection));
+    count += expected[i].length;
+  }
+
+  return received;
+}
 
 for (const mode of modes) {
   test(mode + ' matches the native CLI contract fixture', async ({ page }) => {
     const server = mode === 'ws' ? await startServer(true) : null;
     try {
       await startHarness(page, mode, server?.url ?? '');
-      const expected = nativeTranscript();
-      expect(expected).toHaveLength(frames.length);
-      let received: Delivery[] = [];
-      let count = 0;
-      for (const [i, frame] of frames.entries()) {
-        if (frame.op === 'tick' && server) {
-          server.tick();
-        } else {
-          await page.evaluate(async frame => {
-            const modulePath = '/tests/contract-harness.ts';
-            const harness: typeof import('./contract-harness') = await import(modulePath);
-            await harness.apply(frame);
-          }, frame);
-        }
-        const snapshot = async () => page.evaluate(async () => {
-          const modulePath = '/tests/contract-harness.ts';
-          const harness: typeof import('./contract-harness') = await import(modulePath);
-          return harness.transcript();
-        });
-        await expect.poll(async () => {
-          received = await snapshot();
-          return received.length;
-        }).toBe(count + expected[i].length);
-        expect(received.slice(count).sort(byConnection), JSON.stringify(frame))
-          .toEqual([...expected[i]].sort(byConnection));
-        count += expected[i].length;
-      }
+      const received = await compareTranscript(page, fixture('dual-runtime'), 'breakwater', server?.tick);
 
       const request = (id: string) => received.find(({ message }) => message.requestId === id)?.message;
       expect(request('incompatible')).toMatchObject({ type: 'Error', payload: { code: 'UNSUPPORTED_VERSION' } });
@@ -103,6 +109,26 @@ for (const mode of modes) {
         if (id === 'final-d') expect(summary?.position).toEqual({ x: 26, z: 225 });
         expect(message.payload.characters.every(row => !Object.hasOwn(row, 'cash') && !Object.hasOwn(row, 'travel'))).toBe(true);
       }
+    } finally {
+      await server?.stop();
+    }
+  });
+
+  test(mode + ' loads Cove with the same native CLI transcript', async ({ page }) => {
+    const server = mode === 'ws' ? await startServer(true, 'cove') : null;
+    try {
+      await startHarness(page, mode, server?.url ?? '', 'cove');
+      const received = await compareTranscript(page, fixture('cove-runtime'), 'cove', server?.tick);
+      const request = (id: string) => received.find(({ message }) => message.requestId === id)?.message;
+      expect(request('hello-a')).toMatchObject({ payload: { worldId: 'cove', worldRevision: 1 } });
+      expect(request('contended')).toMatchObject({ payload: { accepted: false, code: 'CHARACTER_BUSY' } });
+      expect(request('preview-a')).toMatchObject({ payload: { route: { distanceMm: 68000, durationTicks: 2 } } });
+      expect(request('final-a')).toMatchObject({ worldTick: 2, payload: {
+        controlled: { locationId: 'shore-lookout', travel: null },
+        characters: expect.arrayContaining([{ id: 'resident-ada', position: { x: 32, z: 65 },
+          eligible: true, name: 'Ada', occupied: true, status: 'AtLocation' }]),
+      } });
+      expect(request('final-b')).toMatchObject({ payload: { controlled: { id: 'resident-ben', cash: 200 } } });
     } finally {
       await server?.stop();
     }

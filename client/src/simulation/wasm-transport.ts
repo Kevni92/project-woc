@@ -1,5 +1,6 @@
 import type { Transport, TransportFactory, TransportListener } from './transport';
-import type { WorkerAttach, WorkerRequest, WorkerResponse } from './wasm-channel';
+import type { WorldInit } from '../content/world-package';
+import type { WorkerAttach, WorkerRequest, WorkerResponse, WorkerStart } from './wasm-channel';
 
 type FailureListener = (error: Error) => void;
 type AttachPort = (port: MessagePort, onFailure: FailureListener) => () => void;
@@ -62,7 +63,7 @@ class WasmTransport implements Transport {
   }
 }
 
-function createWasmHost(clock: 'realtime' | 'manual') {
+function createWasmHost(world: WorldInit, clock: WorkerStart['clock']) {
   let worker: Worker | null = null;
   const clients = new Set<FailureListener>();
   const attach: AttachPort = (port, onFailure) => {
@@ -72,20 +73,22 @@ function createWasmHost(clock: 'realtime' | 'manual') {
         name: 'woc-simulation',
       });
       worker = activeWorker;
-      const fail = () => {
+      const fail = (code = 'WORKER_FAILED') => {
         if (worker !== activeWorker) return;
         worker = null;
         activeWorker.terminate();
         const connected = [...clients];
         clients.clear();
-        for (const notify of connected) notify(new Error('WORKER_FAILED'));
+        for (const notify of connected) notify(new Error(code));
       };
-      activeWorker.onerror = fail;
-      activeWorker.onmessageerror = fail;
+      activeWorker.onerror = () => fail();
+      activeWorker.onmessageerror = () => fail();
       activeWorker.onmessage = event => {
-        if (event.data?.type === 'failure') fail();
+        if (event.data?.type === 'failure') fail(typeof event.data.code === 'string' ? event.data.code : undefined);
       };
-      activeWorker.postMessage({ type: 'start', clock });
+      const payload = { manifest: world.manifest.slice(), world: world.world.slice() };
+      activeWorker.postMessage({ type: 'start', clock, world: payload } satisfies WorkerStart,
+        [payload.manifest.buffer, payload.world.buffer]);
     }
     worker.postMessage({ type: 'attach', port } satisfies WorkerAttach, [port]);
     clients.add(onFailure);
@@ -97,10 +100,10 @@ function createWasmHost(clock: 'realtime' | 'manual') {
   };
 }
 
-export function createWasmTransportFactory(): TransportFactory {
-  return createWasmHost('realtime').factory;
+export function createWasmTransportFactory(world: WorldInit): TransportFactory {
+  return createWasmHost(world, 'realtime').factory;
 }
 
-export function createManualWasmHost(): { factory: TransportFactory; tick: () => void } {
-  return createWasmHost('manual');
+export function createManualWasmHost(world: WorldInit): { factory: TransportFactory; tick: () => void } {
+  return createWasmHost(world, 'manual');
 }

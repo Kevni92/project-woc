@@ -22,7 +22,7 @@ using Deliveries = std::vector<Delivery>;
 // its deliveries are handed to the transport.
 class Endpoint {
 public:
-    Endpoint();
+    Endpoint(WorldDefinition definition, unsigned world_revision, std::string semantic_hash);
     void open(ConnectionId connection);
     [[nodiscard]] Deliveries close(ConnectionId connection);
     [[nodiscard]] Deliveries receive(ConnectionId connection, std::string_view message);
@@ -48,6 +48,8 @@ private:
     void publish_changes(Deliveries& deliveries);
 
     SimulationHost host_;
+    const unsigned world_revision_;
+    const std::string semantic_hash_;
     std::map<ConnectionId, Connection> connections_;
 };
 

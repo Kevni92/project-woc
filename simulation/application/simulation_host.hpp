@@ -2,6 +2,8 @@
 
 #include "core/world.hpp"
 
+#include <utility>
+
 namespace woc {
 
 using SessionId = std::uint64_t;
@@ -52,7 +54,7 @@ struct View {
 
 class SimulationHost {
 public:
-    explicit SimulationHost(const WorldDefinition& definition) : world_(definition) {}
+    explicit SimulationHost(WorldDefinition definition) : world_(std::move(definition)) {}
 
     [[nodiscard]] SessionId connect();
     void disconnect(SessionId session);

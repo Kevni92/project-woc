@@ -67,7 +67,9 @@ struct WorldDefinition {
 
 class World {
 public:
-    explicit World(const WorldDefinition& definition);
+    explicit World(WorldDefinition definition);
+    World(const World&) = delete;
+    World& operator=(const World&) = delete;
     static constexpr std::size_t character_count = character_ids.size();
 
     [[nodiscard]] const auto& characters() const { return characters_; }
@@ -83,7 +85,7 @@ public:
 private:
     MovementStarted start(Character& character, Route route, std::optional<std::string_view> location);
 
-    const WorldDefinition& definition_;
+    const WorldDefinition definition_;
     std::uint64_t tick_ = 0;
     std::array<Character, character_count> characters_{{
         {character_ids[0], "Ada", true, 100},

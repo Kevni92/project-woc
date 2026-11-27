@@ -1,0 +1,17 @@
+[
+  {"op":"open","connection":1},
+  {"op":"open","connection":2},
+  {"op":"send","connection":1,"message":{"protocolVersion":3,"type":"Hello","requestId":"hello-a","payload":{}}},
+  {"op":"send","connection":2,"message":{"protocolVersion":3,"type":"Hello","requestId":"hello-b","payload":{}}},
+  {"op":"send","connection":1,"message":{"protocolVersion":3,"type":"Command","requestId":"acquire-a","payload":{"action":"AcquireCharacter","characterId":"resident-ada"}}},
+  {"op":"send","connection":2,"message":{"protocolVersion":3,"type":"Command","requestId":"contended","payload":{"action":"AcquireCharacter","characterId":"resident-ada"}}},
+  {"op":"send","connection":2,"message":{"protocolVersion":3,"type":"Command","requestId":"acquire-b","payload":{"action":"AcquireCharacter","characterId":"resident-ben"}}},
+  {"op":"send","connection":1,"message":{"protocolVersion":3,"type":"RoutePreview","requestId":"preview-a","payload":{"characterId":"resident-ada","locationId":"shore-lookout"}}},
+  {"op":"send","connection":1,"message":{"protocolVersion":3,"type":"Command","requestId":"move-a","payload":{"action":"MoveTo","characterId":"resident-ada","locationId":"shore-lookout"}}},
+  {"op":"tick"},
+  {"op":"tick"},
+  {"op":"send","connection":1,"message":{"protocolVersion":3,"type":"SnapshotRequest","requestId":"final-a","payload":{}}},
+  {"op":"send","connection":2,"message":{"protocolVersion":3,"type":"SnapshotRequest","requestId":"final-b","payload":{}}},
+  {"op":"close","connection":1},
+  {"op":"close","connection":2}
+]

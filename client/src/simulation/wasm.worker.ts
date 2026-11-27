@@ -1,10 +1,10 @@
 import createWoc from '../generated/woc.mjs';
 import type { WocModule } from '../generated/woc.mjs';
 import wasmUrl from '../generated/woc.wasm?url';
-import type { WorkerAttach, WorkerRequest, WorkerResponse } from './wasm-channel';
+import type { WorldInit } from '../content/world-package';
+import type { WorkerAttach, WorkerRequest, WorkerResponse, WorkerStart } from './wasm-channel';
 
 const worker = self as DedicatedWorkerGlobalScope;
-type Start = { type: 'start'; clock: 'realtime' | 'manual' };
 type Tick = { type: 'tick' };
 type Delivery = { connection: number; message: string };
 const ports = new Map<number, MessagePort>();
@@ -14,22 +14,42 @@ let nextConnection = 1;
 let initializing: Promise<WocModule> | null = null;
 let timer: ReturnType<typeof setInterval> | undefined;
 let failed = false;
-let clock: Start['clock'];
+let clock: WorkerStart['clock'];
 
-function fail(): void {
+function fail(code = 'WORKER_FAILED'): void {
   if (failed) return;
   failed = true;
   clearInterval(timer);
-  worker.postMessage({ type: 'failure' });
+  worker.postMessage({ type: 'failure', code });
   worker.close();
 }
 
-function deliver(runtime: WocModule): void {
+function output(runtime: WocModule): string {
   const start = runtime._woc_output_data();
-  const payload = decoder.decode(runtime.HEAPU8.subarray(start, start + runtime._woc_output_size()));
-  const deliveries = JSON.parse(payload) as Delivery[];
+  return decoder.decode(runtime.HEAPU8.subarray(start, start + runtime._woc_output_size()));
+}
+
+function deliver(runtime: WocModule): void {
+  const deliveries = JSON.parse(output(runtime)) as Delivery[];
   for (const { connection, message } of deliveries) {
     ports.get(connection)?.postMessage({ type: 'message', wire: message } satisfies WorkerResponse);
+  }
+}
+
+function initializeWorld(runtime: WocModule, { manifest, world }: WorldInit): WocModule {
+  const manifestPointer = runtime._malloc(manifest.length);
+  const worldPointer = runtime._malloc(world.length);
+  try {
+    if (!manifestPointer || !worldPointer) throw new Error('WASM_ALLOCATION_FAILED');
+    runtime.HEAPU8.set(manifest, manifestPointer);
+    runtime.HEAPU8.set(world, worldPointer);
+    if (runtime._woc_init(manifestPointer, manifest.length, worldPointer, world.length) !== 0) {
+      throw new Error('WORLD_INIT_FAILED: ' + output(runtime));
+    }
+    return runtime;
+  } finally {
+    runtime._free(manifestPointer);
+    runtime._free(worldPointer);
   }
 }
 
@@ -72,11 +92,11 @@ function attach(runtime: WocModule, port: MessagePort): void {
   port.postMessage({ type: 'ready' } satisfies WorkerResponse);
 }
 
-worker.onmessage = (event: MessageEvent<Start | WorkerAttach | Tick>) => {
+worker.onmessage = (event: MessageEvent<WorkerStart | WorkerAttach | Tick>) => {
   const request = event.data;
   if (request.type === 'start' && !initializing) {
     clock = request.clock;
-    initializing = createWoc({ locateFile: () => wasmUrl });
+    initializing = createWoc({ locateFile: () => wasmUrl }).then(runtime => initializeWorld(runtime, request.world));
     void initializing.then(runtime => {
       if (request.clock === 'realtime') {
         timer = setInterval(() => {
@@ -88,13 +108,16 @@ worker.onmessage = (event: MessageEvent<Start | WorkerAttach | Tick>) => {
           }
         }, 1000);
       }
-    }).catch(fail);
+    }).catch(error => {
+      const code = error instanceof Error && error.message.startsWith('WORLD_INIT_FAILED:') ? error.message : undefined;
+      fail(code);
+    });
   } else if (request.type === 'attach' && initializing) {
-    void initializing.then(runtime => attach(runtime, request.port)).catch(fail);
+    void initializing.then(runtime => attach(runtime, request.port), () => request.port.close()).catch(() => fail());
   } else if (request.type === 'tick' && clock === 'manual' && initializing) {
     void initializing.then(runtime => {
       runtime._woc_tick();
       deliver(runtime);
-    }).catch(fail);
+    }, () => {}).catch(() => fail());
   }
 };

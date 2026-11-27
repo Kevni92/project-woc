@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { WorldPackage } from '../content/world-package';
   import type { SimulationClient } from '../simulation/simulation-client';
   import SessionPanel from './SessionPanel.svelte';
 
-  const { clients }: { clients: [SimulationClient, SimulationClient] } = $props();
+  const { clients, world }: { clients: [SimulationClient, SimulationClient]; world: WorldPackage } = $props();
   const originalUrl = new URL(location.href);
   const mapUrl = new URL(originalUrl);
   mapUrl.searchParams.delete('view');
@@ -50,12 +51,12 @@
       <h1>Simulations-Debugger</h1>
     </header>
     <div class="sessions">
-      <SessionPanel client={clients[0]} title="Client A" />
-      <SessionPanel client={clients[1]} title="Client B" />
+      <SessionPanel client={clients[0]} city={world.city} title="Client A" />
+      <SessionPanel client={clients[1]} city={world.city} title="Client B" />
     </div>
   </main>
 {:else}
   {#await import('./MapView.svelte') then { default: MapView }}
-    <MapView client={clients[0]} debugUrl={debugUrl.href} ondebug={event => navigate(event, debugUrl)} />
+    <MapView client={clients[0]} {world} debugUrl={debugUrl.href} ondebug={event => navigate(event, debugUrl)} />
   {/await}
 {/if}

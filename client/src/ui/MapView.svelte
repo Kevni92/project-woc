@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { city } from '../render/city-data';
+  import type { WorldPackage } from '../content/world-package';
   import type { Point } from '../render/city-data';
   import type { CommandResult, RoutePreviewResult } from '../simulation/protocol';
   import type { ClientState, SimulationClient } from '../simulation/simulation-client';
@@ -10,7 +10,10 @@
 
   type Selection = { kind: 'location' | 'building' | 'character'; id: string };
 
-  let { client, debugUrl, ondebug }: { client: SimulationClient; debugUrl: string; ondebug: (event: MouseEvent) => void } = $props();
+  let { client, world, debugUrl, ondebug }: {
+    client: SimulationClient; world: WorldPackage; debugUrl: string; ondebug: (event: MouseEvent) => void;
+  } = $props();
+  const city = $derived(world.city);
   let viewport: MapViewport;
   let directory = $state<'places' | 'characters'>();
   let directoryTrigger: HTMLElement | undefined;
@@ -264,7 +267,7 @@
       <p class="travel-arrival" role="status">Angekommen · {arrivedAt.name}</p>
     {/if}
   </div>
-  <MapViewport bind:this={viewport} markers={projection.markers} gameMinutes={projection.gameMinutes}
+  <MapViewport bind:this={viewport} {world} markers={projection.markers} gameMinutes={projection.gameMinutes}
     {selection} {route} focusPoint={projection.controlled?.position} onselect={select}
     details={selectedLocation || selectedBuilding || selectedCharacter ? context : undefined} />
 </main>

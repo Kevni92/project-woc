@@ -22,7 +22,7 @@ MovementStatus Character::status() const {
     return location ? MovementStatus::at_location : MovementStatus::idle;
 }
 
-World::World(const WorldDefinition& definition) : definition_(definition) {
+World::World(WorldDefinition definition) : definition_(std::move(definition)) {
     for (std::size_t i = 0; i < characters_.size(); ++i) {
         characters_[i].position = definition_.spawns[i];
         for (const auto& [id, access] : definition_.locations) {

@@ -13,28 +13,51 @@ FetchContent_Declare(nlohmann_json
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-set(breakwater_file "${PROJECT_SOURCE_DIR}/content/breakwater.json")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${breakwater_file}")
-file(READ "${breakwater_file}" breakwater_hex HEX)
-string(REGEX REPLACE "(..)" "0x\\1,\n" breakwater_bytes "${breakwater_hex}")
-configure_file(simulation/content/breakwater_json.hpp.in generated/breakwater_json.hpp @ONLY)
+if(EMSCRIPTEN)
+    add_compile_options(-fexceptions)
+endif()
+FetchContent_Declare(json_schema_validator
+    URL https://codeload.github.com/pboettch/json-schema-validator/tar.gz/refs/tags/2.4.1
+    URL_HASH SHA256=0c8bf7ba59bd50e312d82da4bab1d49cf3e2211cfbd659472f9c90505d2a4e4c
+)
+FetchContent_Declare(picosha2
+    URL https://codeload.github.com/okdshin/PicoSHA2/tar.gz/refs/tags/v1.0.1
+    URL_HASH SHA256=9983136544234e573fe07cc1a22fdf978ad7979043e7be2e9082f6d4991ff8a8
+    SOURCE_SUBDIR header_only
+)
+FetchContent_MakeAvailable(json_schema_validator picosha2)
+
+# Embed the schema contracts. World package data is read only at runtime.
+function(woc_read_schema name file)
+    set(path "${PROJECT_SOURCE_DIR}/content/${file}.schema.json")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${path}")
+    file(READ "${path}" schema)
+    set(${name}_schema "${schema}" PARENT_SCOPE)
+endfunction()
+woc_read_schema(package world-package-v1)
+woc_read_schema(city city-v2)
+woc_read_schema(visual city-visual-v1)
+woc_read_schema(theme map-theme-v1)
+woc_read_schema(provenance world-provenance-v1)
+configure_file(simulation/content/schemas.hpp.in generated/schemas.hpp @ONLY)
 
 add_library(woc_core STATIC simulation/core/world.cpp simulation/core/navigation.cpp)
 target_include_directories(woc_core PUBLIC simulation)
-add_library(woc_content STATIC simulation/content/city.cpp)
-target_include_directories(woc_content PRIVATE "${PROJECT_BINARY_DIR}/generated")
-target_link_libraries(woc_content PUBLIC woc_core PRIVATE nlohmann_json::nlohmann_json)
+add_library(woc_content STATIC simulation/content/city.cpp simulation/content/world_package.cpp)
+target_include_directories(woc_content PRIVATE "${PROJECT_BINARY_DIR}/generated" "${picosha2_SOURCE_DIR}")
+target_link_libraries(woc_content PUBLIC woc_core PRIVATE nlohmann_json_schema_validator)
 add_library(woc_application STATIC simulation/application/simulation_host.cpp)
 target_link_libraries(woc_application PUBLIC woc_core)
 add_library(woc_protocol STATIC simulation/protocol/endpoint.cpp)
-target_link_libraries(woc_protocol PUBLIC woc_application PRIVATE woc_content nlohmann_json::nlohmann_json)
+target_link_libraries(woc_protocol PUBLIC woc_application PRIVATE nlohmann_json::nlohmann_json)
 
 if(EMSCRIPTEN)
     add_executable(woc_wasm simulation/hosts/wasm/bridge.cpp)
-    target_link_libraries(woc_wasm PRIVATE woc_protocol nlohmann_json::nlohmann_json)
+    target_link_libraries(woc_wasm PRIVATE woc_protocol woc_content nlohmann_json::nlohmann_json)
     set_target_properties(woc_wasm PROPERTIES OUTPUT_NAME woc SUFFIX ".mjs")
     target_link_options(woc_wasm PRIVATE
         --no-entry
+        -fexceptions
         "-sMODULARIZE=1"
         "-sEXPORT_ES6=1"
         "-sENVIRONMENT=worker"
@@ -61,10 +84,12 @@ else()
     )
     FetchContent_MakeAvailable(Boost)
 
+    add_library(woc_native_package STATIC simulation/hosts/native/package_io.cpp)
+    target_link_libraries(woc_native_package PUBLIC woc_content)
     add_executable(woc_cli simulation/hosts/native/cli.cpp)
-    target_link_libraries(woc_cli PRIVATE woc_protocol nlohmann_json::nlohmann_json)
+    target_link_libraries(woc_cli PRIVATE woc_protocol woc_native_package nlohmann_json::nlohmann_json)
     add_executable(woc_server simulation/hosts/native/server.cpp)
-    target_link_libraries(woc_server PRIVATE woc_protocol Boost::beast)
+    target_link_libraries(woc_server PRIVATE woc_protocol woc_native_package Boost::beast)
     if(WIN32)
         target_compile_definitions(woc_server PRIVATE _WIN32_WINNT=0x0A00)
     endif()
@@ -72,7 +97,7 @@ else()
     include(CTest)
     if(BUILD_TESTING)
         add_executable(woc_native_tests tests/native.cpp)
-        target_link_libraries(woc_native_tests PRIVATE woc_protocol woc_content nlohmann_json::nlohmann_json)
+        target_link_libraries(woc_native_tests PRIVATE woc_protocol woc_native_package nlohmann_json::nlohmann_json)
         add_test(NAME woc_native_tests COMMAND woc_native_tests WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     endif()
 endif()

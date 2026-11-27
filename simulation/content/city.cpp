@@ -1,9 +1,10 @@
 #include "content/city.hpp"
-#include "breakwater_json.hpp"
+#include "schemas.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json-schema.hpp>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -15,8 +16,8 @@ using Json = nlohmann::json;
 using Polygon = std::vector<Position>;
 constexpr unsigned content_version = 2;
 
-void require(bool condition, const std::string& message) {
-    if (!condition) throw std::invalid_argument("Invalid city: " + message);
+void require(bool condition, std::string_view message) {
+    if (!condition) throw std::invalid_argument("Invalid city: " + std::string(message));
 }
 
 std::string identifier(const Json& value) {
@@ -60,6 +61,106 @@ Distance cross(Position a, Position b) {
 
 Position difference(Position a, Position b) {
     return {a.x - b.x, a.z - b.z};
+}
+
+bool intersects(Position a, Position b, Position c, Position d) {
+    if (std::max(a.x, b.x) < std::min(c.x, d.x) || std::max(c.x, d.x) < std::min(a.x, b.x)
+        || std::max(a.z, b.z) < std::min(c.z, d.z) || std::max(c.z, d.z) < std::min(a.z, b.z)) return false;
+    const auto same_side = [](Position start, Position end, Position p, Position q) {
+        const auto along = difference(end, start);
+        const auto side_p = cross(along, difference(p, start));
+        const auto side_q = cross(along, difference(q, start));
+        return (side_p > 0 && side_q > 0) || (side_p < 0 && side_q < 0);
+    };
+    return !same_side(a, b, c, d) && !same_side(c, d, a, b);
+}
+
+void validate_polygon(const Polygon& polygon) {
+    double area = 0;
+    for (std::size_t i = 0; i < polygon.size(); ++i) {
+        const auto a = polygon[i];
+        const auto b = polygon[(i + 1) % polygon.size()];
+        const auto c = polygon[(i + 2) % polygon.size()];
+        const auto along = difference(b, a);
+        const auto next = difference(c, b);
+        require(a != b && (cross(along, next) != 0 || along.x * next.x + along.z * next.z > 0),
+            "invalid polygon segment");
+        area += cross(a, b);
+        for (auto j = i + 2; j < polygon.size(); ++j) {
+            if (i == 0 && j == polygon.size() - 1) continue;
+            require(!intersects(a, b, polygon[j], polygon[(j + 1) % polygon.size()]), "intersecting polygon segments");
+        }
+    }
+    require(area != 0, "polygon without area");
+}
+
+void validate_geography(const Json& city, const Navigation& navigation,
+                        const std::vector<Polygon>& land, const std::vector<Polygon>& buildings) {
+    const auto& bounds = city.at("bounds");
+    const auto min_x = millimeters(bounds.at("minX"));
+    const auto max_x = millimeters(bounds.at("maxX"));
+    const auto min_z = millimeters(bounds.at("minZ"));
+    const auto max_z = millimeters(bounds.at("maxZ"));
+    require(min_x < max_x && min_z < max_z, "inverted bounds");
+    const auto check_point = [&](Position p) {
+        require(p.x >= min_x && p.x <= max_x && p.z >= min_z && p.z <= max_z, "point outside world bounds");
+    };
+    const auto check_polygon = [&](const Polygon& polygon) {
+        for (auto p : polygon) check_point(p);
+        validate_polygon(polygon);
+    };
+    for (const auto& polygon : land) check_polygon(polygon);
+    for (const auto& polygon : buildings) check_polygon(polygon);
+    for (const auto& polygon : city.at("greens")) check_polygon(points(polygon));
+    check_point(point(city.at("start")));
+    check_point(point(city.at("waterLabel").at("position")));
+
+    std::set<std::string> ids{identifier(city.at("id"))};
+    const auto add_id = [&](const std::string& id) {
+        require(ids.insert(id).second, "duplicate geography ID " + id);
+    };
+    std::set<std::string> districts;
+    for (const auto& district : city.at("districts")) {
+        const auto id = identifier(district.at("id"));
+        add_id(id);
+        districts.insert(id);
+        check_point(point(district.at("label")));
+        check_polygon(points(district.at("outline")));
+    }
+    const auto district_id = [&](const Json& feature) {
+        const auto id = identifier(feature.at("district"));
+        require(districts.contains(id), "unknown district " + id);
+        return id;
+    };
+    std::map<std::string, std::string> building_districts;
+    for (const auto& building : city.at("buildings")) {
+        const auto id = identifier(building.at("id"));
+        add_id(id);
+        building_districts.emplace(id, district_id(building));
+    }
+    for (const auto& location : city.at("locations")) {
+        add_id(identifier(location.at("id")));
+        check_point(point(location.at("position")));
+        const auto district = district_id(location);
+        if (location.contains("building")) {
+            const auto building = building_districts.find(identifier(location.at("building")));
+            require(building != building_districts.end() && building->second == district, "invalid location building reference");
+        }
+    }
+    for (const auto& road : city.at("roads")) {
+        add_id(identifier(road.at("id")));
+        const auto path = points(road.at("path"));
+        for (auto p : path) check_point(p);
+        require(std::adjacent_find(path.begin(), path.end()) == path.end(), "road has a zero length segment");
+    }
+    for (const auto& node : navigation.nodes()) {
+        add_id(node.id);
+        check_point(node.point);
+    }
+    for (const auto& edge : navigation.edges()) {
+        add_id(edge.id);
+        for (auto p : edge.path) check_point(p);
+    }
 }
 
 bool inside(const Polygon& polygon, double x, double z, bool include_boundary) {
@@ -122,8 +223,22 @@ bool walkable(Position a, Position b, const std::vector<Polygon>& land,
 
 }
 
+Json validate_city_json(std::string_view source) {
+    static const nlohmann::json_schema::json_validator validator(Json::parse(schemas::city));
+    try {
+        auto city = Json::parse(source);
+        validator.validate(city);
+        return city;
+    } catch (const std::exception& error) {
+        throw std::invalid_argument(std::string("Invalid city schema: ") + error.what());
+    }
+}
+
 WorldDefinition load_city(std::string_view source) {
-    const auto city = Json::parse(source);
+    return parse_city(validate_city_json(source));
+}
+
+WorldDefinition parse_city(const Json& city) {
     require(city.at("version") == content_version, "unsupported content version");
     const auto& graph = city.at("navigation");
     require(graph.at("nodes").is_array() && graph.at("edges").is_array(), "invalid navigation lists");
@@ -163,6 +278,7 @@ WorldDefinition load_city(std::string_view source) {
     for (const auto& building : city.at("buildings")) buildings.push_back(points(building.at("footprint")));
     require(!land.empty() && std::ranges::all_of(land, [](const auto& p) { return p.size() >= 3; })
         && std::ranges::all_of(buildings, [](const auto& p) { return p.size() >= 3; }), "invalid polygons");
+    validate_geography(city, navigation, land, buildings);
     for (const auto& edge : navigation.edges()) {
         for (std::size_t i = 1; i < edge.path.size(); ++i) {
             require(walkable(edge.path[i - 1], edge.path[i], land, buildings), "blocked edge " + edge.id);
@@ -172,9 +288,9 @@ WorldDefinition load_city(std::string_view source) {
     const auto start = node_index(graph.at("start"));
     require(navigation.nodes()[start].point == point(city.at("start")), "start position mismatch");
     require(!navigation.edges().empty(), "no walking edges");
-    for (NodeIndex i = 0; i < navigation.nodes().size(); ++i) {
-        require(navigation.route({.node = start}, i).has_value(),
-            "disconnected node " + navigation.nodes()[i].id);
+    const auto reachable = navigation.reachable_from(start);
+    for (NodeIndex i = 0; i < reachable.size(); ++i) {
+        require(reachable[i], "disconnected node " + navigation.nodes()[i].id);
     }
 
     std::map<std::string, NodeIndex, std::less<>> locations;
@@ -211,13 +327,6 @@ WorldDefinition load_city(std::string_view source) {
         "invalid ambient start or waypoint");
     return {identifier(city.at("id")), content_version, std::move(navigation), start, std::move(locations),
             spawn_positions, waypoints};
-}
-
-const WorldDefinition& breakwater() {
-    static const auto definition = load_city({
-        reinterpret_cast<const char*>(breakwater_json), sizeof(breakwater_json),
-    });
-    return definition;
 }
 
 }

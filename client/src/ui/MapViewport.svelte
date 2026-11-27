@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Snippet } from 'svelte';
-  import { city } from '../render/city-data';
-  import { loadBreakwaterStyle } from '../render/breakwater-style';
+  import type { WorldPackage } from '../content/world-package';
   import { MapRenderer } from '../render/map-renderer';
   import { pinPosition, type MarkerLayout } from '../render/map-anchors';
   import type { MapFrame } from '../render/map-renderer';
@@ -13,6 +12,7 @@
   import './map.css';
 
   interface Props {
+    world: WorldPackage;
     markers: readonly CharacterMarker[];
     gameMinutes?: number;
     route?: Route;
@@ -22,7 +22,8 @@
     details?: Snippet;
   }
 
-  let { markers, gameMinutes, route, selection, focusPoint, onselect, details }: Props = $props();
+  let { world, markers, gameMinutes, route, selection, focusPoint, onselect, details }: Props = $props();
+  const city = $derived(world.city);
   let canvas: HTMLCanvasElement;
   let surface: HTMLElement;
   let container: HTMLElement;
@@ -37,15 +38,8 @@
   const turn = Math.PI / 6;
 
   onMount(() => {
-    let style: ReturnType<typeof loadBreakwaterStyle>;
     try {
-      style = loadBreakwaterStyle();
-    } catch (error) {
-      failure = 'Kartendarstellung konnte nicht geladen werden. ' + (error instanceof Error ? error.message : String(error));
-      return;
-    }
-    try {
-      renderer = new MapRenderer(container, canvas, city, style.visuals, style.theme, value => { frame = value; }, id => {
+      renderer = new MapRenderer(container, canvas, city, world.visuals, world.theme, value => { frame = value; }, id => {
         onselect(id ? { kind: 'building', id } : undefined);
       });
     } catch {

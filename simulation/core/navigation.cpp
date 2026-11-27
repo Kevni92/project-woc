@@ -92,6 +92,25 @@ bool Navigation::valid(GraphPosition position) const {
         && position.offset < edges_[*position.edge].length;
 }
 
+std::vector<bool> Navigation::reachable_from(NodeIndex start) const {
+    std::vector<bool> visited(nodes_.size());
+    std::vector<NodeIndex> frontier{start};
+    visited.at(start) = true;
+    while (!frontier.empty()) {
+        const auto head = frontier.back();
+        frontier.pop_back();
+        for (auto index : adjacent_[head]) {
+            const auto& edge = edges_[index];
+            const auto neighbor = edge.a == head ? edge.b : edge.a;
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                frontier.push_back(neighbor);
+            }
+        }
+    }
+    return visited;
+}
+
 Position Navigation::point(GraphPosition position) const {
     if (!position.edge) return nodes_[position.node].point;
     const auto edge = *position.edge;

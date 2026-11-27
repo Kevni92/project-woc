@@ -1,18 +1,19 @@
 import { describe, expect, test } from 'vitest';
-import coastal from '../../content/themes/coastal.json';
-import { loadBreakwaterStyle } from '../src/render/breakwater-style';
 import { parseCity } from '../src/render/city-data';
 import { containsRing, distanceSquaredBetween, isSimpleRing } from '../src/render/map-geometry';
 import { parseTheme, parseVisuals } from '../src/render/visual-data';
-import cove from './fixtures/cove.json';
+import { packageJson } from './package-files';
 
+const cove = { world: packageJson('cove', 'world.json'), visuals: packageJson('cove', 'visual.json') };
+const coastal = packageJson('breakwater', 'theme.json');
 const world = parseCity(cove.world);
 const theme = parseTheme(coastal);
 const check = (visuals: unknown) => parseVisuals(visuals, world, theme);
 
 describe('visual content contract', () => {
   test('loads Breakwater and an independent export in local meters', () => {
-    expect(loadBreakwaterStyle().visuals.decorations).toHaveLength(2);
+    expect(parseVisuals(packageJson('breakwater', 'visual.json'), parseCity(packageJson('breakwater', 'world.json')), theme)
+      .decorations).toHaveLength(2);
     expect(check(cove.visuals)).toBe(cove.visuals);
     expect(check({ ...cove.visuals, buildings: [], roads: [], surfaces: [], coasts: [], decorations: [] }).worldId).toBe('cove');
   });

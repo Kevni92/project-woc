@@ -1,0 +1,241 @@
+{
+  "version": 2,
+  "id": "cove",
+  "name": "Cove",
+  "bounds": {
+    "minX": 0,
+    "minZ": 0,
+    "maxX": 120,
+    "maxZ": 100
+  },
+  "start": [
+    25,
+    30
+  ],
+  "land": [
+    [
+      [
+        0,
+        0
+      ],
+      [
+        60,
+        0
+      ],
+      [
+        60,
+        100
+      ],
+      [
+        0,
+        100
+      ]
+    ]
+  ],
+  "districts": [
+    {
+      "id": "cove-center",
+      "name": "Center",
+      "label": [
+        20,
+        20
+      ],
+      "outline": [
+        [
+          0,
+          0
+        ],
+        [
+          55,
+          0
+        ],
+        [
+          55,
+          90
+        ],
+        [
+          0,
+          90
+        ]
+      ]
+    }
+  ],
+  "greens": [],
+  "roads": [
+    {
+      "id": "main-lane",
+      "kind": "street",
+      "width": 8,
+      "path": [
+        [
+          15,
+          30
+        ],
+        [
+          50,
+          30
+        ]
+      ]
+    }
+  ],
+  "buildings": [
+    {
+      "id": "clubhouse",
+      "district": "cove-center",
+      "height": 7,
+      "footprint": [
+        [
+          6,
+          40
+        ],
+        [
+          20,
+          40
+        ],
+        [
+          20,
+          48
+        ],
+        [
+          6,
+          48
+        ]
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "meeting-point",
+      "name": "Meeting Point",
+      "type": "plaza",
+      "district": "cove-center",
+      "position": [
+        45,
+        30
+      ],
+      "access": "path-end",
+      "description": "Small meeting spot on the lane."
+    },
+    {
+      "id": "shore-lookout",
+      "name": "Shore Lookout",
+      "type": "lookout",
+      "district": "cove-center",
+      "position": [
+        32,
+        65
+      ],
+      "access": "lookout-access",
+      "description": "A quiet spot above the beach."
+    }
+  ],
+  "navigation": {
+    "start": "path-start",
+    "nodes": [
+      {
+        "id": "path-start",
+        "position": [
+          25,
+          30
+        ]
+      },
+      {
+        "id": "path-end",
+        "position": [
+          45,
+          30
+        ]
+      },
+      {
+        "id": "shore-turn",
+        "position": [
+          45,
+          65
+        ]
+      },
+      {
+        "id": "lookout-access",
+        "position": [
+          32,
+          65
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "id": "lane-walk",
+        "a": "path-start",
+        "b": "path-end",
+        "mode": "foot",
+        "lengthMm": 20000,
+        "path": [
+          [
+            25,
+            30
+          ],
+          [
+            45,
+            30
+          ]
+        ]
+      },
+      {
+        "id": "shore-walk",
+        "a": "path-end",
+        "b": "shore-turn",
+        "mode": "foot",
+        "lengthMm": 35000,
+        "path": [
+          [
+            45,
+            30
+          ],
+          [
+            45,
+            65
+          ]
+        ]
+      },
+      {
+        "id": "lookout-walk",
+        "a": "shore-turn",
+        "b": "lookout-access",
+        "mode": "foot",
+        "lengthMm": 13000,
+        "path": [
+          [
+            45,
+            65
+          ],
+          [
+            32,
+            65
+          ]
+        ]
+      }
+    ],
+    "spawns": {
+      "resident-ada": {
+        "node": "path-start"
+      },
+      "resident-ben": {
+        "edge": "lookout-walk",
+        "offsetMm": 7000
+      },
+      "ambient-01": {
+        "node": "path-end"
+      }
+    },
+    "ambientPatrol": [
+      "path-end",
+      "lookout-access"
+    ]
+  },
+  "waterLabel": {
+    "name": "Cove Sound",
+    "position": [
+      80,
+      50
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provenanceVersion", "method", "sources"],
+  "properties": {
+    "provenanceVersion": { "const": 1 },
+    "method": { "type": "string", "minLength": 1 },
+    "generatorVersion": { "type": "string", "minLength": 1 },
+    "seed": { "type": "string" },
+    "parameters": { "type": "object" },
+    "qualityReport": { "type": "object" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["provider", "url", "license", "attribution"],
+        "properties": {
+          "provider": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "pattern": "^https?://" },
+          "license": { "type": "string", "minLength": 1 },
+          "attribution": { "type": "string", "minLength": 1 },
+          "dataDate": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]+$" }
+        }
+      }
+    }
+  }
+}
