@@ -1,25 +1,25 @@
 # Transportneutraler Simulationsvertrag
 
-Status. Protokoll v2 ist mit P1-001 implementiert. Worker und WebSocket verwenden denselben Vertrag.
+Status. Worker und WebSocket verwenden Protokoll v3. P1-005 ergänzt den Abgleich des geladenen World Package.
 
 ## Client und Transport
 
 `SimulationClient` bietet `connect`, `disconnect`, `sendCommand`, `requestSnapshot`, `subscribe`, `acquireCharacter`, `releaseCharacter`, `previewRoute` und `moveTo`. Aufrufe mit Ergebnis sind asynchron. Abonnenten erhalten Verbindungsstatus, Fehler und eine lesende Projektion. Beide Browseradapter implementieren `open`, `send` und `close` mit Empfangs- und Abbruchcallbacks und transportieren dieselben JSON-Zeichenketten. Jeder WebSocket und jeder MessagePort hat eine eigene Host-Verbindung. Erst `Hello` erzeugt eine logische Session für die Lebensdauer der Verbindung.
 
-## Wire-Format v2
+## Wire-Format v3
 
-UTF-8-JSON mit einer Nachricht pro WebSocket-Textnachricht beziehungsweise Worker-Nachricht. Die Schemas definieren die Felder und Typen. Die gemeinsame Fixture enthält parallele Verbindungen, Befehle, Ticks und eine neue Session nach Disconnect. [Anfragen](../../protocol/client-v2.schema.json) · [Antworten](../../protocol/server-v2.schema.json) · [Vertragsfixture](../../protocol/fixtures/dual-runtime.json)
+UTF-8-JSON mit einer Nachricht pro WebSocket-Textnachricht beziehungsweise Worker-Nachricht. Die Schemas definieren die Felder und Typen. Die Fixtures decken parallele Verbindungen, Befehle und Ticks in beiden Welten ab. [Anfragen](../../protocol/client-v3.schema.json) · [Antworten](../../protocol/server-v3.schema.json) · [Breakwater](../../protocol/fixtures/dual-runtime.json) · [Cove](../../protocol/fixtures/cove-runtime.json)
 
 | Richtung | Nachrichten |
 |---|---|
 | Client → Host | `Hello`, `Command`, `RoutePreview`, `SnapshotRequest` |
 | Host → Client | `Welcome`, `CommandResult`, `RoutePreviewResult`, `Snapshot`, `Delta`, `Error` |
 
-Jede Anfrage enthält `protocolVersion: 2`, `type`, `requestId` und `payload`. IDs bestehen aus 1–64 ASCII-Zeichen aus `A–Z`, `a–z`, `0–9`, `_` und `-`. Die zulässigen Request-Felder sind abschließend. Der WebSocket-Adapter beendet die Verbindung bei binären Nachrichten oder Eingaben über 4.096 Bytes. Der Worker liefert bei zu großen Nachrichten `INVALID_MESSAGE`.
+Jede Anfrage enthält `protocolVersion: 3`, `type`, `requestId` und `payload`. IDs bestehen aus 1–64 ASCII-Zeichen aus `A–Z`, `a–z`, `0–9`, `_` und `-`. Die zulässigen Request-Felder sind abschließend. Der WebSocket-Adapter beendet die Verbindung bei binären Nachrichten oder Eingaben über 4.096 Bytes. Der Worker liefert bei zu großen Nachrichten `INVALID_MESSAGE`.
 
-`Hello` und `SnapshotRequest` haben einen leeren Payload. `Welcome` liefert `sessionId`, `worldId`, `contentVersion` und die Fähigkeiten `CharacterControl`, `FootTravel` und `SnapshotDelta`. Der Browser prüft Welt-ID und Content-Version gegen seine Kartendatei und erwartet `FootTravel`. Auf `Welcome` folgt unmittelbar der initiale `Snapshot` ohne `requestId`. Ein explizit angeforderter Snapshot erhält die Request-ID.
+`Hello` und `SnapshotRequest` haben einen leeren Payload. `Welcome` liefert `sessionId`, `worldId`, `worldSchemaVersion`, `worldRevision`, `semanticHash` und die Fähigkeiten `CharacterControl`, `FootTravel` und `SnapshotDelta`. Der Browser gleicht die Weltfelder mit dem bereits verifizierten Paket ab und erwartet `FootTravel`. Bei abweichender Paketidentität meldet er `INCOMPATIBLE_WORLD_PACKAGE` und trennt die Verbindung, bevor er den initialen `Snapshot` annimmt. Dieser folgt auf `Welcome` ohne `requestId`. Ein explizit angeforderter Snapshot erhält die Request-ID. [World Package](world-package.md)
 
-Der Host weist inkompatible Versionen mit `UNSUPPORTED_VERSION` zurück. Bei einer v1-Anfrage verwendet er dafür das v1-Fehlerformat. v2 erfordert neue Projektionsfelder, erlaubt gebrochene Meterkoordinaten und ersetzt den Debugbefehl `TestAction` durch `MoveTo`. Die bisherigen v1-Schemas dokumentieren den Stand von P0-002.
+Der Host weist inkompatible Versionen mit `UNSUPPORTED_VERSION` zurück. Anfragen in v1 und v2 erhalten das jeweilige ältere Fehlerformat. Die älteren Schemas dokumentieren P0-002 und P1-001.
 
 ## Steuerübernahme und Reisen
 

@@ -44,14 +44,14 @@ WorldState enthält Bewohner auch ohne Client; Session-/Kontrollrechte sind kein
 
 ## Kartenpfad
 
-`content/breakwater.json` liefert statische Geografie und den Graphen für die Welt `p0-test-world` in lokalen Metern. CMake bettet die JSON-Bytes reproduzierbar in beide Builds ein. Der Content-Adapter liest und validiert die Geografie beim Hoststart und übergibt dem Core eine typisierte Weltdefinition. Vite bündelt dieselbe Datei für die Karte. Der Renderer nutzt dieselben x/z-Koordinaten wie die öffentlichen Charakterpositionen, y ist die Höhe.
+Manifest und Karten-JSON liegen in laufzeitladbaren Paketen. Der gemeinsame C++-Loader prüft die semantischen Bytes beim nativen Start und bei der WASM-Initialisierung. `World` besitzt die unveränderliche typisierte Definition und hält damit Referenzen aus Reisen und Projektionen gültig. Der Browser prüft vor der Verbindung das vollständige Paket. Er reicht die Welt an Karte und Debugger weiter und vergleicht ihre Identität mit `Welcome` in Protokoll v3. [World Package](world-package.md)
 
-`MapViewport` liest bei der Initialisierung das validierte Visual-Sidecar und Theme. Es reicht die lesenden Marker, die Route, die Auswahl und die Spielminuten an den Renderer. Die orthografische Kamera bietet einen unabhängigen Azimut. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Farbgruppen bündeln die statische Geometrie. Ein Dreiecksindex ordnet angeklickte Dach- und Wandflächen der autoritativen Gebäude-ID zu. Die Fenster werden in räumlichen Gruppen erst in der Nahansicht eingeblendet. Die Wasserfarbe nutzt eine einmal berechnete Distanztextur mit metrischen Koordinaten.
+`MapViewport` erhält Geografie, Visual-Sidecar und Theme über das geladene Paket. Es reicht die lesenden Marker, die Route, die Auswahl und die Spielminuten an den Renderer. Die orthografische Kamera bietet einen unabhängigen Azimut. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Farbgruppen bündeln die statische Geometrie. Ein Dreiecksindex ordnet angeklickte Dach- und Wandflächen der autoritativen Gebäude-ID zu. Die Fenster werden in räumlichen Gruppen erst in der Nahansicht eingeblendet. Die Wasserfarbe nutzt eine einmal berechnete Distanztextur mit metrischen Koordinaten.
 
 `MapView` nimmt Befehle entgegen und zeigt Steuerrechte, Reisezustand und privates Bargeld aus der autoritativen Projektion. Marker, Führungslinien und Kontextfenster teilen sich die Projektion in CSS-Pixeln. Bei einer Resynchronisierung blendet die Karte Live-Marker und Route bis zum Snapshot aus und lädt bei Bedarf eine frische Vorschau. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu. [Kartenformat](map-format.md) · [Kartenstil](../design/map-visuals.md)
 
-## Geplanter Weltimport und Runtime-Loader
-P1-005 ersetzt fest einkompilierte Karten durch explizit geladene, validierte World Packages. P1-006 importiert OSM-Daten; P1-007 stellt ein separates lokales Entwicklerwerkzeug bereit. Siehe [World Package](world-package.md) und [World Studio](../design/world-studio.md). Noch nicht implementiert.
+## Geplanter Weltimport
+P1-006 soll aus OSM-Daten World Packages erstellen. P1-007 stellt dafür ein separates lokales Entwicklerwerkzeug bereit. [World Studio](../design/world-studio.md)
 
 ## Langfristige Content-Engine
 C++ interpretiert dynamisch geladene, versionierte Definitionen und Startinstanzen; World Studio wird später modularer Content-Editor. Generische typisierte Mechanikhandler und deklarative Bedingungen/Effekte statt hartcodierter Spielinhalte. Siehe [Game Content](game-content.md). Kartenloader/Importer/Studio bleiben zunächst im bisherigen Umfang, keine vollständige Regel-Engine vorziehen.

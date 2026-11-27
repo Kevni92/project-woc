@@ -5,11 +5,11 @@ Status. Die drei Datenbereiche und ihre JSON-Verträge sind IMPLEMENTIERT. Seman
 
 | Vertrag | Daten | Verwendung |
 |---|---|---|
-| [Welt v2](../../content/city-v2.schema.json) | [Breakwater](../../content/breakwater.json) mit Bounds, Land, Vierteln, Straßenachsen und Breiten, Gebäudegrundrissen und Gesamthöhen, Orten und Zugängen, Graph und Spawns | C++-Hosts und Client |
-| [Visualformat v1](../../content/city-visual-v1.schema.json) | [Breakwater-Sidecar](../../content/breakwater.visual.json) mit Referenzen auf Gebäude und Straßen sowie eigenen Flächen, Küstenlinien und Stegen | Client-Renderer |
-| [Themeformat v1](../../content/map-theme-v1.schema.json) | [Coastal](../../content/themes/coastal.json) mit Tag-/Nachtfarbrollen, LOD-Schwellen, Abständen und Profilregeln | Client-Renderer, für mehrere Karten verwendbar |
+| [Welt v2](../../content/city-v2.schema.json) | [Breakwater](../../content/public/worlds/breakwater/world.json) mit Bounds, Land, Vierteln, Straßenachsen und Breiten, Gebäudegrundrissen und Gesamthöhen, Orten und Zugängen, Graph und Spawns | C++-Hosts und Client |
+| [Visualformat v1](../../content/city-visual-v1.schema.json) | [Breakwater-Sidecar](../../content/public/worlds/breakwater/visual.json) mit Referenzen auf Gebäude und Straßen sowie eigenen Flächen, Küstenlinien und Stegen | Client-Renderer |
+| [Themeformat v1](../../content/map-theme-v1.schema.json) | [Coastal](../../content/public/worlds/breakwater/theme.json) mit Tag-/Nachtfarbrollen, LOD-Schwellen, Abständen und Profilregeln | Client-Renderer, für mehrere Karten verwendbar |
 
-CMake bettet nur Welt v2 in native und WASM ein. Der C++-Adapter validiert daraus die WorldDefinition. Die 61 Wegknoten, 78 Kanten und sechs Ortszugänge sind die Basis der Fußreisen. Protokoll v2 prüft weiterhin die semantische Content-Version.
+Native und WASM laden die semantische Geografie zur Laufzeit und bauen daraus die `WorldDefinition`. Die 61 Wegknoten, 78 Kanten und sechs Ortszugänge in Breakwater sind die Basis der Fußreisen. Protokoll v3 prüft die Identität der Welt anhand von ID, Revision und semantischem SHA-256. [World Package](world-package.md)
 
 ## Exportvertrag
 
@@ -24,11 +24,11 @@ CMake bettet nur Welt v2 in native und WASM ein. Der C++-Adapter validiert darau
 
 `parseVisuals` und `parseTheme` prüfen JSON-Schema und Querverweise ohne DOM oder Three.js. Sie melden unbekannte Versionen, doppelte IDs, fehlende Referenzen, unpassende Höhen- und Breitenwerte sowie ungültige Geometrien. Die Dekorations-IDs sind über alle drei visuellen Geometrielisten und gegenüber Welt-IDs eindeutig. Beim Laden meldet das HUD einen Fehler im Sidecar oder Theme und hält Orts- und Charakterlisten verfügbar. [Validatoren](../../client/src/render/visual-data.ts)
 
-## Generator und Build
+## Generator und Paket
 
-Ein externer Exporter schreibt die Weltdatei und das Sidecar getrennt. Für reproduzierbare Exporte erzeugt er IDs stabil aus Seed und Feature-Schlüssel, beispielsweise `north-road-03`. Die ID bleibt bei Umsortierung und bei reinen Stiländerungen erhalten. Referenzen verweisen auf diese IDs. Protokollkompatible Änderungen am Sidecar erhöhen bei Bedarf dessen `revision`. Bei semantischer Änderung synchronisiert der Exporter Graph, Ortszugänge und `worldVersion` mit beiden Host-Builds. Der Browser bündelt den Sidecar und das Theme über Vite. Das C++-Build und die Protokollnachrichten verarbeiten nur Welt v2.
+Ein externer Exporter schreibt die Weltdatei und das Sidecar getrennt. Für reproduzierbare Exporte erzeugt er IDs stabil aus Seed und Feature-Schlüssel, beispielsweise `north-road-03`. Die ID bleibt bei Umsortierung und bei reinen Stiländerungen erhalten. Referenzen verweisen auf diese IDs. Der Exporter aktualisiert bei Änderungen die entsprechenden Revisionen und Datei-Hashes im Manifest. Bei einer semantischen Änderung prüft er zudem Graph und Ortszugänge. Browser und Hosts laden das neue Paket bei ihrem nächsten Start.
 
-Das unabhängige Cove-Fixture enthält ein JSON-Beispiel mit einer kurzen Straße, einem Haus, einem Strand und einem Pier. `npm --prefix client test -- visual-data.test.ts` lädt beide Karten und prüft ungültige Exporte. [Cove-Fixture](../../client/tests/fixtures/cove.json)
+Cove enthält eine kurze Straße, ein Haus, einen Strand, einen Pier und zwei Reiseziele. `npm --prefix client test -- visual-data.test.ts world-package.test.ts` prüft beide Kartendatensätze und ungültige Exporte. [Cove-Paket](../../content/public/worlds/cove/manifest.json)
 
 Später sind metrische Chunks mit Manifest, räumlichem Index und LOD möglich. Raster-Tiles oder Vector Tiles bleiben Optionen für größere Karten.
 
@@ -46,6 +46,3 @@ Straßen, Flächen und Gebäude verwenden gemeinsame Materialien und Geometriegr
 - MapLibre Style Specification: https://maplibre.org/maplibre-style-spec/ und https://maplibre.org/maplibre-style-spec/layers/ — Datenquelle und Style-Layer getrennt; Fill, Line, Symbol, Extrusion und Zoomregeln. Wir übernehmen das Prinzip, nicht zwingend die Bibliothek.
 - OpenStreetMap Simple 3D Buildings: https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings — Footprint, Höhe, Geschosse, Dachformen als abstrakte Daten; Inspiration für eigenes lokales Schema, kein OSM-Import.
 - Three.js: https://threejs.org/docs/pages/OrbitControls.html, https://threejs.org/docs/pages/InstancedMesh.html, https://threejs.org/docs/ — vorhandene orthografische Kamera und Geometrien bleiben geeignet; OrbitControls als Referenz, vorhandene MapCamera gezielt erweitern.
-
-## Geplanter Runtime-Paketvertrag
-Die aktuelle fest gebündelte Welt soll durch [World Packages](world-package.md) ersetzt werden; [World Studio](../design/world-studio.md) exportiert in dieses Format. Die bestehenden Schemafamilien bleiben Grundlage. Die obigen Implementierungsangaben beschreiben weiterhin P1-004, nicht bereits implementierte Runtime-Loader.

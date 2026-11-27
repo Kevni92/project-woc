@@ -29,7 +29,7 @@ Echte Wegfindung/Reisen, Fahrzeuglogik, NPC-Tagespläne, Missionen, Inventar, Pe
 - [x] README, Architektur, Roadmap und dieser Task aktualisiert; kleine nachvollziehbare Commits.
 
 ## Ergebnis
-[Breakwater](../content/breakwater.json) enthält drei Viertel, 40 Gebäude und sechs benannte Orte. Das [Schema](../content/city-v1.schema.json) definiert das Dateiformat. Der Client prüft außerdem IDs, Referenzen, Koordinatengrenzen und degenerierte Geometrie. Der Startbereich um x=0 m und z=0 m hält die bestehenden Host-Koordinaten für Ada, Ben und den Passanten frei.
+[Breakwater](../content/public/worlds/breakwater/world.json) enthält drei Viertel, 40 Gebäude und sechs benannte Orte. Das [ursprüngliche Schema](../content/city-v1.schema.json) definiert das Dateiformat dieses Schnitts. Der Client prüft außerdem IDs, Referenzen, Koordinatengrenzen und degenerierte Geometrie. Der Startbereich um x=0 m und z=0 m hält die bestehenden Host-Koordinaten für Ada, Ben und den Passanten frei.
 
 Der Kartenrenderer verwendet eine orthografische Three.js-Szene. Bei 650 sichtbaren vertikalen Metern beginnt der Übergang von der flachen Übersicht zur geneigten Ansicht. Bei 135 Metern ist die volle Neigung und Gebäudehöhe erreicht. Der Kartenfokus liegt bei 76 Metern. Der Mauszeiger bleibt beim Zoom auf demselben Punkt der Bodenebene. HTML-Marker behalten bei Überlappungen ihren projizierten Anker und verschieben nur die anklickbare Schaltfläche. Beim Ansichtswechsel gibt die Karte Renderer-Ressourcen und ihr Abonnement frei. Client A bleibt als gemeinsame Session von Karte und Debugger bestehen.
 

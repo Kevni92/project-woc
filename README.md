@@ -2,11 +2,11 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand.** Breakwater ist eine bildschirmfüllende, frei drehbare Küstenkarte mit fließendem Übergang zur 3D-Nahansicht. Übernommene Bewohner können zu sechs Orten laufen. Karte und Simulations-Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
+**Stand.** Breakwater und die kleinere Testwelt Cove sind als laufzeitladbare Kartenpakete verfügbar. Die bildschirmfüllende Karte lässt sich drehen und frei zoomen. Übernommene Bewohner können zu Orten der gewählten Welt laufen. Karte und Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
 
 ## Lokal bauen und starten
 
-Benötigt werden CMake ab 3.25, Ninja, ein C++23-Compiler, das Emscripten SDK 4.0.23 und Node.js 22 ab 22.12, 24 oder 26+. CMake lädt nlohmann/json 3.12.0 und für den nativen Build Boost 1.90.0 aus den festgelegten Release-Archiven. `npm ci` installiert die Versionen aus dem Client-Lockfile.
+Benötigt werden CMake ab 3.25, Ninja, ein C++23-Compiler, das Emscripten SDK 4.0.23 und Node.js 22 ab 22.12, 24 oder 26+. CMake lädt nlohmann/json 3.12.0, json-schema-validator 2.4.1, PicoSHA2 1.0.1 und für den nativen Build Boost 1.90.0. `npm ci` installiert die Versionen aus dem Client-Lockfile.
 
 **Windows, nativer Build** im x64 Native Tools Command Prompt für Visual Studio 2022 mit C++-Build-Tools und Windows SDK. Befehle aus der Repository-Wurzel ausführen.
 
@@ -40,6 +40,14 @@ npm --prefix client run dev -- --host 127.0.0.1 --port 5173 --strictPort
 - **WASM** über [127.0.0.1:5173](http://127.0.0.1:5173/). Stadtkarte und Debugger teilen sich den dedizierten Worker.
 - **WebSocket** über [127.0.0.1:5173/?transport=ws](http://127.0.0.1:5173/?transport=ws). In einem zweiten Terminal aus der Repository-Wurzel `build\native\woc_server.exe` (Windows) oder `./build/native/woc_server` (Linux/macOS) starten. Standardadresse ist `ws://127.0.0.1:8765`. Für einen anderen Port `woc_server --port PORT` verwenden und die WebSocket-Adresse als URL-kodierten Parameter `ws` übergeben.
 
+### Welt auswählen
+
+Breakwater ist der Standard. Öffne für Cove im WASM-Modus [127.0.0.1:5173/?world=cove](http://127.0.0.1:5173/?world=cove). Im WebSocket-Modus starte den Server mit `--world content/public/worlds/cove` und öffne [127.0.0.1:5173/?world=cove&transport=ws](http://127.0.0.1:5173/?world=cove&transport=ws). Die CLI akzeptiert dieselbe Option.
+
+Die integrierten Paketdateien liegen unter `content/public/worlds/`. Vite stellt sie im Dev-Modus direkt bereit und kopiert sie beim Build als statische Dateien nach `client/dist/worlds/`. Zusätzliche Pakete lassen sich in der bereitgestellten Basis ergänzen oder über `?world=<ordner>&worldBase=/karten/` von einer anderen statischen Basis laden. Ein Weltwechsel benötigt einen neuen Seitenaufruf und im nativen Modus einen neuen Hoststart. [Paketformat](docs/architecture/world-package.md)
+
+### Karte bedienen
+
 Die Karte verbindet beim ersten Öffnen automatisch. Linkes Ziehen und die Pfeiltasten verschieben den Ausschnitt. Mausrad, Zwei-Finger-Geste oder Plus/Minus zoomen. Rechtes Ziehen, Umschalt + linkes Ziehen, Q/E und die Drehtasten rotieren die Karte. N und der Kompass richten sie nach Norden aus. Die Fokustaste zentriert den eigenen Charakter oder den Startbereich. Die Übersichtstaste oder Pos1 setzt den Ausschnitt und die Nordausrichtung zurück.
 
 Wähle Orte oder Charaktere über ihre Marker oder die einklappbaren Listen im Kartenmenü. Der Auswahlbereich folgt dem Marker auf großen Fenstern und erscheint am unteren Rand auf schmalen Fenstern. Ein Gebäudeklick zeigt Viertel und Höhe. Escape schließt die Auswahl oder die geöffnete Liste. Ohne WebGL 2 bleiben Listen und Reiseaktionen erreichbar.
@@ -60,7 +68,7 @@ npm --prefix client exec -- playwright install chromium
 npm --prefix client run test:e2e
 ```
 
-Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die Paritätsprüfung führt dieselben Befehle und Ticks über CLI, Worker und WebSocket aus. Mit `--manual-clock-stdin` liest der native Server pro Tick eine Zeile `tick` von stdin. Fixture und Prüfungen stehen in [P1-001](tasks/P1-001-movement.md).
+Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die Paritätsprüfung vergleicht pro Paket dieselben Befehle und Ticks über CLI, Worker und WebSocket. Mit `--manual-clock-stdin` liest der native Server pro Tick eine Zeile `tick` von stdin. [P1-005](tasks/P1-005-world-package-loader.md)
 
 `npm --prefix client run test:e2e -- map-visual.spec.ts` erzeugt eigene Kartenaufnahmen mit der Host-Spielzeit 08:00 und 21:00 unter `client/test-results/`. Der Test deckt die Übersicht, die Nahsicht, einen 90°-Küstenblick, einen mobilen Kontext und die Zwei-Finger-Zoomgeste ab.
 
@@ -86,11 +94,11 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P1-004](tasks/P1-004-map-visual-upgrade.md) | Fullscreen-Karte, Visualformat und kartografische Details |
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
-| [World Package](docs/architecture/world-package.md) | Laufzeitladbare Kartenpakete (geplant) |
+| [World Package](docs/architecture/world-package.md) | Laufzeitladbare Kartenpakete |
 | [World Studio](docs/design/world-studio.md) | Lokaler Geodateneditor und Import (geplant) |
 | [Studio-Content](docs/design/world-studio-content.md) | Langfristige modulare Gameplay-Editoren |
 | [Game Content](docs/architecture/game-content.md) | Datengetriebene Definitionen, Initialzustand und Regelinterpreter |
-| [P1-005](tasks/P1-005-world-package-loader.md) | Kartenloader (nächster Task) |
+| [P1-005](tasks/P1-005-world-package-loader.md) | Paketloader für native Anwendung, WASM und Browser |
 | [P1-006](tasks/P1-006-osm-world-importer.md) | OSM-Importer |
 | [P1-007](tasks/P1-007-world-studio.md) | Visueller Karteneditor |
 

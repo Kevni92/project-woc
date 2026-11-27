@@ -31,6 +31,7 @@
 | D027 | ENTWURF | Manifest-Paket mit bestehenden City/Visual/Theme-Schemas, Revision/Hash, Runtime-Init; MapLibre/Terra Draw + Python-GIS-Importer. P1-005 → P1-006 → P1-007 vor NPC-Routinen. |
 | D028 | VORGABE | World Studio langfristig modularer Gameplay-Editor für Gebäude/Orte, Charaktere, Missionen, Events, Items/Waffen, Fahrzeuge, Eigenschaften und Funktionalitäten. Konkrete Inhalte dynamisch bei Host-/Clientstart laden, nicht einkompilieren. Kartengenerator zuerst. |
 | D029 | ENTWURF | Versionierte Gameplay-Module, getrennte Definition/Initialzustand/Save, typisierte deklarative Trigger/Bedingungen/Effekte, generische Engine-Handler, erweiterbarer Paketmanifest-Vertrag. Keine freie Scripting-Engine oder vollständige Editor-Suite im Karten-MVP. |
+| D030 | IMPLEMENTIERT | P1-005, 2026-11-27. Hosts laden World Package v1 mit City v2 und geprüften SHA-256-Dateihashes. `World` besitzt die unveränderliche Definition. WASM bindet Ports und Uhr nach dem Init. Der Browser lädt Darstellungsdaten über HTTP und prüft `Welcome` v3 gegen Welt-ID, Schema, Revision und semantischen Hash. Die Selektoren sind `breakwater` und `cove`. |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?
