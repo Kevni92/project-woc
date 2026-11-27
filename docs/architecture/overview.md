@@ -52,3 +52,6 @@ WorldState enthält Bewohner auch ohne Client; Session-/Kontrollrechte sind kein
 
 ## Geplanter Weltimport und Runtime-Loader
 P1-005 ersetzt fest einkompilierte Karten durch explizit geladene, validierte World Packages. P1-006 importiert OSM-Daten; P1-007 stellt ein separates lokales Entwicklerwerkzeug bereit. Siehe [World Package](world-package.md) und [World Studio](../design/world-studio.md). Noch nicht implementiert.
+
+## Langfristige Content-Engine
+C++ interpretiert dynamisch geladene, versionierte Definitionen und Startinstanzen; World Studio wird später modularer Content-Editor. Generische typisierte Mechanikhandler und deklarative Bedingungen/Effekte statt hartcodierter Spielinhalte. Siehe [Game Content](game-content.md). Kartenloader/Importer/Studio bleiben zunächst im bisherigen Umfang, keine vollständige Regel-Engine vorziehen.

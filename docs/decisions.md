@@ -29,6 +29,8 @@
 | D025 | IMPLEMENTIERT | P1-004, 2026-11-27. Breakwater nutzt Welt v2, Visual-Sidecar v1 und Coastal-Theme v1. Ein orthografischer Kamerapfad steuert unabhängigen Azimut und Zoomneigung. Der Renderer bündelt Geometrie nach Farbrollen, verankert die Wasserfarbrampe in der Welt und hält den Host als Quelle für Wege, Spielzeit und Charaktere. Die Weltdatei und der Protokollvertrag bleiben kompatibel. |
 | D026 | VORGABE | Separates lokales World Studio, echte Geodaten, Rechteck-/Freihandauswahl, optional Ozean außerhalb, Export von zur Laufzeit ladbaren Karten für native/WASM/Client. |
 | D027 | ENTWURF | Manifest-Paket mit bestehenden City/Visual/Theme-Schemas, Revision/Hash, Runtime-Init; MapLibre/Terra Draw + Python-GIS-Importer. P1-005 → P1-006 → P1-007 vor NPC-Routinen. |
+| D028 | VORGABE | World Studio langfristig modularer Gameplay-Editor für Gebäude/Orte, Charaktere, Missionen, Events, Items/Waffen, Fahrzeuge, Eigenschaften und Funktionalitäten. Konkrete Inhalte dynamisch bei Host-/Clientstart laden, nicht einkompilieren. Kartengenerator zuerst. |
+| D029 | ENTWURF | Versionierte Gameplay-Module, getrennte Definition/Initialzustand/Save, typisierte deklarative Trigger/Bedingungen/Effekte, generische Engine-Handler, erweiterbarer Paketmanifest-Vertrag. Keine freie Scripting-Engine oder vollständige Editor-Suite im Karten-MVP. |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?

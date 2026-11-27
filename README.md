@@ -88,6 +88,8 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 | [World Package](docs/architecture/world-package.md) | Laufzeitladbare Kartenpakete (geplant) |
 | [World Studio](docs/design/world-studio.md) | Lokaler Geodateneditor und Import (geplant) |
+| [Studio-Content](docs/design/world-studio-content.md) | Langfristige modulare Gameplay-Editoren |
+| [Game Content](docs/architecture/game-content.md) | Datengetriebene Definitionen, Initialzustand und Regelinterpreter |
 | [P1-005](tasks/P1-005-world-package-loader.md) | Kartenloader (nächster Task) |
 | [P1-006](tasks/P1-006-osm-world-importer.md) | OSM-Importer |
 | [P1-007](tasks/P1-007-world-studio.md) | Visueller Karteneditor |

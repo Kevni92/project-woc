@@ -38,3 +38,6 @@ OSM-Daten ODbL; Attribution © OpenStreetMap contributors und Link https://www.o
 - https://shapely.readthedocs.io/ — Geometrieoperationen, https://pyproj4.github.io/pyproj/stable/ — CRS.
 - https://operations.osmfoundation.org/policies/tiles/ und https://operations.osmfoundation.org/policies/nominatim/ — Vorschau-/Suchproviderregeln.
 - https://osmfoundation.org/wiki/Licence/Licence_and_Legal_FAQ — ODbL.
+
+## Langfristige Erweiterung (VORGABE)
+World Studio wächst vom Kartengenerator zur vollständigen lokalen Content-Authoring-Suite. Gebäude/Orte, Charaktere, Missionen, Events, Items/Waffen, Fahrzeuge und Eigenschaften/Regelkombinationen sollen konfigurierbar und platzierbar sein. Editierbare Projektdateien getrennt von validierten Runtime-Paketen halten, IDs und Referenzpicker gemeinsam nutzen. P1-007 bleibt ausschließlich Kartengenerator; modularer Projekt-/Exportpfad ohne vorgezogene Gameplay-Editoren. Siehe [Studio-Content](world-studio-content.md) und [Game Content](../architecture/game-content.md).

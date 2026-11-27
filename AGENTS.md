@@ -14,11 +14,12 @@ Ein kartenbasiertes Singleplayer-Crime-RPG im Browser: die Interaktionskarte eri
 - Simulierte NPC-Tagesabläufe und 24-Stunden-Spielzeit mit visueller Tag-/Nachtanpassung.
 - Zunächst lokal im Browser, aber von Beginn an logisch mehrclientfähig. Native Testanwendung früh; öffentlicher Multiplayer später, keine Serverpflicht für lokales Spiel.
 - Karten als versionierte, zur Laufzeit ladbare World Packages; separater lokaler World Studio-Editor mit Rechteck-/Freihandauswahl, Geodatenimport und optionalem Ozean außerhalb der Auswahl. Keine Entwicklerwerkzeuge im Spielbundle.
+- World Studio ist langfristig modularer Gameplay-Content-Editor für Gebäude/Orte, Charaktere, Missionen, Events, Items, Waffen, Fahrzeuge, Regeln und Platzierung. Konkrete Inhalte/Startwerte dynamisch aus versionierten Dateien beim Hoststart laden; keine hartcodierten Content-Definitionen im C++-Core/Client. Engine implementiert generische Mechaniken, Content kombiniert unterstützte Regeln; Spielstände getrennt. Keine umfassende Editor-Suite vor Kartengenerator.
 - Schnelle spielbare Iterationen statt Vollkonzeption. Kein Produktionscode in reinen Konzeptaufträgen.
 
 ## Lesereihenfolge
 1. [Projektübersicht und Dokumentindex](README.md)
-2. [Vision](docs/design/vision.md) und [Welt](docs/design/world.md), [Kartenstil](docs/design/map-visuals.md) und [Kartenformat](docs/architecture/map-format.md), [World Package](docs/architecture/world-package.md), [World Studio](docs/design/world-studio.md)
+2. [Vision](docs/design/vision.md) und [Welt](docs/design/world.md), [Kartenstil](docs/design/map-visuals.md) und [Kartenformat](docs/architecture/map-format.md), [World Package](docs/architecture/world-package.md), [World Studio](docs/design/world-studio.md), [Studio-Content](docs/design/world-studio-content.md), [Game Content](docs/architecture/game-content.md)
 3. [Architektur](docs/architecture/overview.md), [Protokoll](docs/architecture/protocol.md) für technische Aufgaben; [Charaktere](docs/design/characters.md) für NPCs und Steuerübernahme.
 4. [Roadmap](docs/roadmap.md) und [Entscheidungen](docs/decisions.md) für den aktuellen Stand.
 5. [Arbeitsweise](docs/workflow.md) und die jeweils relevante Aufgabe in tasks/.

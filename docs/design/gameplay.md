@@ -13,3 +13,6 @@ Langfristig Crime-RPG-typische fiktive Aufträge, Reputation, Risiko, Konsequenz
 
 ## Erste spielbare Schleife (P2)
 Start in Wohnung → zu Fuß zum Händler → Gegenstand erwerben → Auftrag annehmen → zu Ziel reisen → Belohnung erhalten → speichern und laden. Fahrzeug und Immobilien folgen P3. Noch keine Multiplayer-Interaktion.
+
+## Datengetriebenes Gameplay (VORGABE)
+Konkrete Charaktere, Orte/Funktionen, Items, Fahrzeuge, Jobs, Missionen, Events, Preise, Startwerte und Regelkombinationen stammen langfristig aus validierten World-Studio-Exporten, nicht aus hartcodierten C++-/TS-Definitionen. Engine implementiert generische Regeln und interpretiert deklarative Inhalte. Definitionen, Startinstanzen und Laufzeitspielstände trennen. Siehe [Game Content](../architecture/game-content.md) und [Studio-Content](world-studio-content.md). Jede neue Mechanik in kleinem vertikalem Schnitt entwickeln, nicht alle Editoren vor P2.
