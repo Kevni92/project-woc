@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "name", "bounds", "start", "land", "districts", "greens", "roads", "buildings", "locations", "waterLabel"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "$ref": "#/definitions/id" },
+    "name": { "$ref": "#/definitions/text" },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "maxX", "minZ", "maxZ"],
+      "properties": {
+        "minX": { "type": "number" }, "maxX": { "type": "number" },
+        "minZ": { "type": "number" }, "maxZ": { "type": "number" }
+      }
+    },
+    "start": { "$ref": "#/definitions/point" },
+    "land": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/polygon" } },
+    "greens": { "type": "array", "items": { "$ref": "#/definitions/polygon" } },
+    "districts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "label", "outline"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "name": { "$ref": "#/definitions/text" },
+          "label": { "$ref": "#/definitions/point" },
+          "outline": { "$ref": "#/definitions/polygon" }
+        }
+      }
+    },
+    "roads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "width", "path"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "kind": { "enum": ["avenue", "street"] },
+          "width": { "type": "number", "exclusiveMinimum": 0 },
+          "path": { "type": "array", "minItems": 2, "items": { "$ref": "#/definitions/point" } }
+        }
+      }
+    },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "district", "height", "footprint"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "district": { "$ref": "#/definitions/id" },
+          "height": { "type": "number", "exclusiveMinimum": 0 },
+          "footprint": { "$ref": "#/definitions/polygon" }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "type", "district", "position", "description"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "name": { "$ref": "#/definitions/text" },
+          "type": { "$ref": "#/definitions/text" },
+          "district": { "$ref": "#/definitions/id" },
+          "building": { "$ref": "#/definitions/id" },
+          "position": { "$ref": "#/definitions/point" },
+          "description": { "$ref": "#/definitions/text" }
+        }
+      }
+    },
+    "waterLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "position"],
+      "properties": {
+        "name": { "$ref": "#/definitions/text" },
+        "position": { "$ref": "#/definitions/point" }
+      }
+    }
+  },
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "text": { "type": "string", "minLength": 1 },
+    "point": {
+      "type": "array",
+      "items": [{ "type": "number" }, { "type": "number" }],
+      "minItems": 2,
+      "additionalItems": false
+    },
+    "polygon": { "type": "array", "minItems": 3, "items": { "$ref": "#/definitions/point" } }
+  }
+}

@@ -1,54 +1,15 @@
-import { execFileSync, spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { createInterface } from 'node:readline';
-import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Delivery, Frame, Mode } from './contract-harness';
+import { binary, startServer } from './native-host';
 
 const devUrl = 'http://127.0.0.1:4174';
 const modes: Mode[] = ['wasm', 'ws'];
 const frames = JSON.parse(readFileSync(
   new URL('../../protocol/fixtures/dual-runtime.json', import.meta.url), 'utf8',
 )) as Frame[];
-
-function binary(name: string): string {
-  const suffix = process.platform === 'win32' ? '.exe' : '';
-  return fileURLToPath(new URL('../../build/native/' + name + suffix, import.meta.url));
-}
-
-async function startServer(manual: boolean) {
-  const command = manual ? ['--port', '0', '--manual-clock'] : ['--port', '0'];
-  const child = spawn(binary('woc_server'), command, { stdio: ['ignore', 'pipe', 'pipe'] });
-  const lines = createInterface({ input: child.stdout });
-  let diagnostic = '';
-  child.stderr.setEncoding('utf8').on('data', chunk => { diagnostic += chunk; });
-  try {
-    const [url] = await Promise.race([
-      once(lines, 'line'),
-      once(child, 'exit').then(([code]) => { throw new Error('Server exited (' + code + '): ' + diagnostic); }),
-    ]);
-    if (typeof url !== 'string' || !/^ws:\/\/127\.0\.0\.1:\d+$/.test(url)) {
-      throw new Error('Unexpected server address: ' + url);
-    }
-    return {
-      url,
-      async stop() {
-        if (child.exitCode === null && child.signalCode === null) {
-          const exited = once(child, 'exit');
-          child.kill();
-          await exited;
-        }
-      },
-    };
-  } catch (error) {
-    child.kill();
-    throw error;
-  } finally {
-    lines.close();
-  }
-}
 
 function nativeTranscript(): Delivery[][] {
   const input = frames.map(frame => JSON.stringify(frame)).join('\n') + '\n';
@@ -57,7 +18,7 @@ function nativeTranscript(): Delivery[][] {
 }
 
 async function startHarness(page: Page, mode: Mode, url: string) {
-  await page.goto(devUrl);
+  await page.goto(devUrl + '/?view=debug');
   await page.evaluate(async ({ mode, url }) => {
     const modulePath = '/tests/contract-harness.ts';
     const harness: typeof import('./contract-harness') = await import(modulePath);
@@ -160,7 +121,7 @@ for (const mode of modes) {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     try {
-      const query = new URLSearchParams({ transport: mode });
+      const query = new URLSearchParams({ transport: mode, view: 'debug' });
       if (server) query.set('ws', server.url);
       await page.goto('/?' + query);
       await expect(page.getByRole('heading', { name: 'Simulations-Debugger' })).toBeVisible();
@@ -217,7 +178,7 @@ for (const mode of modes) {
 test('wasm shows startup errors and can retry with a fresh worker', async ({ page }) => {
   const wasmAsset = '**/*.wasm';
   await page.route(wasmAsset, route => route.abort());
-  await page.goto('/');
+  await page.goto('/?view=debug');
   const panel = page.getByRole('region', { name: 'Client A' });
   await panel.getByRole('button', { name: 'Verbinden' }).click();
   await expect(panel.getByRole('alert')).toContainText('WORKER_FAILED');
