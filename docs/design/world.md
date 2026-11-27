@@ -36,3 +36,6 @@ P0-001 blendet zwischen Nacht- und Tagfarben von 05:00 bis 07:00 und von 18:00 b
 
 ## Nächste Weltentscheidungen
 Fiktive Stadt vs. reale Geografie, Stil (US-Küste vs. andere Region), Größe und Dichte, freie Bewegung vs. Klickziel auf Wegenetz. Für P0 reicht eine handgebaute Testkarte; finale Geografie nicht blockierend.
+
+## Weiterentwicklung der Darstellung (VORGABE / ENTWURF)
+Die Karte soll den gesamten Browser-Viewport füllen und 360°-Rotation sowie schwebende HUD-Elemente unterstützen. Dezente Dächer und Fenster, Strand, Wasserfarbstufen, Stege und organischere Straßen sind das visuelle Ziel. [Kartenstil](map-visuals.md) und [Kartenformat](../architecture/map-format.md) konkretisieren P1-004. Das vorhandene autoritative Wegenetz bleibt dabei unverändert; echte Geografieänderungen benötigen gemeinsame Content-Migration.

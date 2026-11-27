@@ -66,6 +66,8 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [AGENTS.md](AGENTS.md) | Zentrale KI-Anweisung für jeden neuen Chat |
 | [Vision](docs/design/vision.md) | Spielprinzip, Grenzen und Kernschleife |
 | [Welt](docs/design/world.md) | Geografie, Orte, Kartenansichten |
+| [Kartenstil](docs/design/map-visuals.md) | Fullscreen-HUD, Kamera und Detailgrad (geplant) |
+| [Kartenformat](docs/architecture/map-format.md) | Trennung semantischer Geografie, Visual-Daten und Theme (geplant) |
 | [Simulation](docs/design/simulation.md) | Zeit, NPCs und Bewegung |
 | [Gameplay](docs/design/gameplay.md) | Charakter, Besitz, Inventar, Missionen |
 | [Charaktere](docs/design/characters.md) | Identität, Steuerübernahme, Simulationstiefe |
@@ -77,6 +79,7 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [P0-001](tasks/P0-001-map-prototype.md) | Interaktive Karte |
 | [P0-002](tasks/P0-002-dual-runtime.md) | Native/WASM-Simulation mit identischem Protokoll |
 | [P1-001](tasks/P1-001-movement.md) | Autoritatives Wegenetz und Fußreisen |
+| [P1-004](tasks/P1-004-map-visual-upgrade.md) | Fullscreen-Karte und Visual-Format (nächster Task) |
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 

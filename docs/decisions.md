@@ -24,6 +24,8 @@
 | D020 | IMPLEMENTIERT | P0-001, 2026-11-27. Breakwater verwendet eine gemeinsame versionierte JSON-Kartendefinition in lokalen x/z-Metern. Three.js rendert die Geografie in einer orthografischen Szene mit kontinuierlichem Übergang zwischen Top-down und geneigter Nahansicht. HTML-Marker, Steuerrechte und Tag-/Nachtpalette folgen der bestehenden SimulationClient-Projektion in beiden Transportmodi. Breakwater und die Zoomschwellen sind Prototypwerte. |
 | D021 | ENTWURF | P1 in Bewegung, Charakterroutinen und NPC-Verhalten aufteilen. Erste Reisen nur zu Fuß zu bekannten Orten; 4 km/h, vorhandener Takt, keine Umleitung während Reise. Host validiert gemeinsame Kartendaten und Routing. |
 | D022 | IMPLEMENTIERT | P1-001, 2026-11-27. Breakwater-Content v2 mit explizitem Fußwegenetz und separaten Ortszugängen. Gemeinsames C++-Routing per Dijkstra bei 4 km/h im vorhandenen Takt. Reisen überdauern Steuerungswechsel und Disconnect im laufenden Host. Protokoll v2 prüft die Content-Kompatibilität und ersetzt die positions- und geldändernde Testaktion durch echte Reisebefehle mit äquivalenten Vertragsregressionen. |
+| D023 | VORGABE | 27.11.2026: Full-Viewport-Karte mit überlagerter UI, 360°-Rotation, dezente Dächer/Fenster ohne Balkone, Strand/Stege/Wassertiefenfarbverläufe und organischere Straßen. Semantische Weltplatzierung getrennt von Renderdetails, generatorfähiges Format. |
+| D024 | ENTWURF | Separate Visual-JSON und Theme auf Basis bestehender Content-Version 2; keine semantische Änderung für P1-004. OrthographicCamera mit unabhängiger Yaw, kartografische Palette, vereinfachte Gebäudeprofile, Depth-Textur/Farbrampe. P1-004 vor P1-002. |
 
 ## Offene Produktfragen
 1. Setting: fiktive US-Küstenstadt, europäische Stadt oder frei erfundene Geografie?

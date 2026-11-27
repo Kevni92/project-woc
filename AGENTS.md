@@ -9,7 +9,7 @@ Ein kartenbasiertes Singleplayer-Crime-RPG im Browser: die Interaktionskarte eri
 - C++ als autoritativer Simulationskern, nativ und via WebAssembly aus derselben Codebasis; TypeScript, Three.js, anpassbares HTML/CSS für Client; kein React, kein Angular.
 - Einheitlicher asynchroner, transportneutraler Client-Vertrag für Web Worker/WASM und WebSocket; keine direkte C++-Objektbindung aus UI oder Renderer.
 - Charaktere sind weltpersistente Entitäten, unabhängig von Clients. Mehrere logische Clients pro Simulation, exklusive Steuerübernahme geeigneter Charaktere, NPC-Autonomie bei Freigabe; unterschiedlich tiefe NPC-Simulation.
-- Zoomfähige, interaktive Karte: einfache 3D-Gebäude bei Nahsicht, flache 2D-Top-down-Übersicht bei Fernsicht; Spieler, NPCs und Fahrzeuge als Marker.
+- Zoomfähige, interaktive Full-Viewport-Karte mit HUD als Overlay, 360°-Rotation, dezent detaillierten Gebäuden bei Nahsicht und flacher 2D-Top-down-Übersicht bei Fernsicht; Spieler, NPCs und Fahrzeuge als Marker. Strand, visuelle Wassertiefen und organischere Straßen; semantische Geografie getrennt von Renderprofilen, generatorfähige JSON-Daten.
 - Charakter, Inventar, Besitz, Fahrzeuge, zeitbasierte Bewegung zu Fuß/per Auto, ortsgebundene textbasierte Missionen; später attributbasierte Minispiele.
 - Simulierte NPC-Tagesabläufe und 24-Stunden-Spielzeit mit visueller Tag-/Nachtanpassung.
 - Zunächst lokal im Browser, aber von Beginn an logisch mehrclientfähig. Native Testanwendung früh; öffentlicher Multiplayer später, keine Serverpflicht für lokales Spiel.
@@ -17,7 +17,7 @@ Ein kartenbasiertes Singleplayer-Crime-RPG im Browser: die Interaktionskarte eri
 
 ## Lesereihenfolge
 1. [Projektübersicht und Dokumentindex](README.md)
-2. [Vision](docs/design/vision.md) und [Welt](docs/design/world.md)
+2. [Vision](docs/design/vision.md) und [Welt](docs/design/world.md), [Kartenstil](docs/design/map-visuals.md) und [Kartenformat](docs/architecture/map-format.md)
 3. [Architektur](docs/architecture/overview.md), [Protokoll](docs/architecture/protocol.md) für technische Aufgaben; [Charaktere](docs/design/characters.md) für NPCs und Steuerübernahme.
 4. [Roadmap](docs/roadmap.md) und [Entscheidungen](docs/decisions.md) für den aktuellen Stand.
 5. [Arbeitsweise](docs/workflow.md) und die jeweils relevante Aufgabe in tasks/.
