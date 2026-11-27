@@ -12,9 +12,9 @@ export function packagePath(world: string) {
   return fileURLToPath(new URL('../../content/public/worlds/' + world + '/', import.meta.url));
 }
 
-export async function startServer(manual: boolean, world = 'breakwater') {
+export async function startServer(manual: boolean, world = 'breakwater', directory = packagePath(world)) {
   const command = manual ? ['--port', '0', '--manual-clock-stdin'] : ['--port', '0'];
-  command.push('--world', packagePath(world));
+  command.push('--world', directory);
   const child = spawn(binary('woc_server'), command, { stdio: ['pipe', 'pipe', 'pipe'] });
   const lines = createInterface({ input: child.stdout });
   let diagnostic = '';

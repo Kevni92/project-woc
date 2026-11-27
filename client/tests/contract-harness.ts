@@ -20,8 +20,9 @@ let factory: TransportFactory;
 let tick: (() => void) | undefined;
 let identity: WorldIdentity;
 
-export async function start(mode: Mode, url: string, slug: string): Promise<void> {
-  const world = await loadWorldPackage(worldPackageUrl(new URLSearchParams({ world: slug }), new URL('/', location.href)));
+export async function start(mode: Mode, url: string, slug: string, worldBase?: string): Promise<void> {
+  const query = new URLSearchParams({ world: slug, ...(worldBase && { worldBase }) });
+  const world = await loadWorldPackage(worldPackageUrl(query, new URL('/', location.href)));
   const wasm = mode === 'wasm' ? createManualWasmHost(world.init) : undefined;
   identity = world.identity;
   factory = wasm?.factory ?? (() => new WebSocketTransport(url));
@@ -54,8 +55,30 @@ export async function apply(frame: Frame): Promise<void> {
   }
 }
 
-export function transcript(): Delivery[] {
-  return deliveries;
+export function transcript(offset: number): Delivery[] {
+  return deliveries.slice(offset);
+}
+
+export async function measurePreviews(locationId: string, samples: number) {
+  const client = new SimulationClient(factory, identity);
+  await client.connect();
+  const result = await client.acquireCharacter('resident-ada');
+  if (!result.accepted) throw new Error('Unable to acquire benchmark character');
+  const elapsed = [];
+  let distanceMm = 0;
+  let durationTicks = 0;
+  for (let i = 0; i < samples + 2; i++) {
+    const start = performance.now();
+    const preview = await client.previewRoute('resident-ada', locationId);
+    if (!preview.accepted) throw new Error('No benchmark route: ' + preview.code);
+    distanceMm = preview.route.distanceMm;
+    durationTicks = preview.route.durationTicks;
+    if (i >= 2) elapsed.push(performance.now() - start);
+  }
+  await client.disconnect();
+  elapsed.sort((a, b) => a - b);
+  return { medianMs: elapsed[Math.floor(elapsed.length / 2)], p95Ms: elapsed[Math.ceil(elapsed.length * .95) - 1],
+    distanceMm, durationTicks, samples };
 }
 
 let state: ClientState;

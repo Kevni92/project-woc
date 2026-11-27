@@ -1,64 +1,13 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
-import type { Delivery, Frame, Mode } from './contract-harness';
-import { binary, packagePath, startServer } from './native-host';
+import type { Frame, Mode } from './contract-harness';
+import { startServer } from './native-host';
 
-const devUrl = 'http://127.0.0.1:4174';
+import { compareTranscript, startHarness } from './contract-runner';
+
 const modes: Mode[] = ['wasm', 'ws'];
 function fixture(name: string): Frame[] {
   return JSON.parse(readFileSync(new URL('../../protocol/fixtures/' + name + '.json', import.meta.url), 'utf8'));
-}
-
-function nativeTranscript(frames: Frame[], world: string): Delivery[][] {
-  const input = frames.map(frame => JSON.stringify(frame)).join('\n') + '\n';
-  const output = execFileSync(binary('woc_cli'), ['--world', packagePath(world)], { input, encoding: 'utf8', timeout: 5000 });
-  return output.trim().split(/\r?\n/).map(line => JSON.parse(line) as Delivery[]);
-}
-
-async function startHarness(page: Page, mode: Mode, url: string, world = 'breakwater') {
-  await page.goto(devUrl + '/?view=debug');
-  await page.evaluate(async ({ mode, url, world }) => {
-    const modulePath = '/tests/contract-harness.ts';
-    const harness: typeof import('./contract-harness') = await import(modulePath);
-    await harness.start(mode, url, world);
-  }, { mode, url, world });
-}
-
-const byConnection = (a: Delivery, b: Delivery) =>
-  a.connection - b.connection || a.message.streamSeq - b.message.streamSeq;
-
-async function compareTranscript(page: Page, frames: Frame[], world: string, tick?: () => void) {
-  const expected = nativeTranscript(frames, world);
-  expect(expected).toHaveLength(frames.length);
-  let received: Delivery[] = [];
-  let count = 0;
-  for (const [i, frame] of frames.entries()) {
-    if (frame.op === 'tick' && tick) {
-      tick();
-    } else {
-      await page.evaluate(async frame => {
-        const modulePath = '/tests/contract-harness.ts';
-        const harness: typeof import('./contract-harness') = await import(modulePath);
-        await harness.apply(frame);
-      }, frame);
-    }
-    const snapshot = async () => page.evaluate(async () => {
-      const modulePath = '/tests/contract-harness.ts';
-      const harness: typeof import('./contract-harness') = await import(modulePath);
-      return harness.transcript();
-    });
-    await expect.poll(async () => {
-      received = await snapshot();
-      return received.length;
-    }).toBe(count + expected[i].length);
-    expect(received.slice(count).sort(byConnection), JSON.stringify(frame))
-      .toEqual([...expected[i]].sort(byConnection));
-    count += expected[i].length;
-  }
-
-  return received;
 }
 
 for (const mode of modes) {

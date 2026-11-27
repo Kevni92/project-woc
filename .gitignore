@@ -6,3 +6,4 @@
 /client/test-results/
 /client/src/generated/*.mjs
 /client/src/generated/*.wasm
+/tools/world-studio/**/__pycache__/
