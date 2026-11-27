@@ -1,6 +1,8 @@
 # P0-002 — Gemeinsamer C++-Simulationskern und zwei Hosts
 Status: erledigt, geprüft am 2026-11-27. Der Debug-Client läuft unabhängig von P0-001. Grundlagen: [Architektur](../docs/architecture/overview.md), [Protokoll](../docs/architecture/protocol.md), [Charaktere](../docs/design/characters.md).
 
+P1-001 hat die historische Testaktion und die zugehörigen Regressionstests auf echte Reisen im Protokoll v2 umgestellt. [Aktueller Stand](P1-001-movement.md)
+
 ## Ziel
 Technischen Architekturpfad früh verifizieren: identische Spiellogik in nativem CLI/Testhost, WASM im Browser-Worker und nativem WebSocket-Host. Kleiner durchgängiger Test statt kompletter Simulation.
 

@@ -1,5 +1,5 @@
 # Technische Architektur
-Status: VORGABE für gemeinsamen C++-Kern mit WASM/native Hosts, asynchronen Transportvertrag und logische Mehrclientfähigkeit. P0-002 setzt diesen Pfad mit einer kleinen Testwelt um. Die darüber hinausgehenden Architekturdetails bleiben ENTWURF.
+Status: VORGABE für gemeinsamen C++-Kern mit WASM/native Hosts, asynchronen Transportvertrag und logische Mehrclientfähigkeit. P0-002 setzt diesen Pfad mit einer kleinen Testwelt um. P1-001 ergänzt Breakwaters autoritativen Graphen und Fußreisen. Die darüber hinausgehenden Architekturdetails bleiben ENTWURF.
 
 ## Architekturziel
 Eine einzige autoritative Spielsimulation in portablem C++23. Der gleiche Core und Application Layer werden für native Programme und das Emscripten-Modul als statische Bibliotheken gebaut. Der TypeScript-Client verwaltet die lesende Projektion. Stadtkarte und Debugger verwenden `SimulationClient`.
@@ -16,33 +16,34 @@ Die Ninja-Presets `native` und `wasm` verwenden getrennte Build-Verzeichnisse. `
 
 | Pfad | Aufgabe |
 |---|---|
-| `simulation/core/` | Weltzustand, Spielzeit, Ambient-Weg und deterministische Testaktion |
+| `simulation/core/` | Weltzustand, Spielzeit, Wegfindung, Reiseverlauf und Bewegungsereignisse |
+| `simulation/content/` | Validierung der eingebetteten Geografie und Aufbau der Weltdefinition |
 | `simulation/application/` | Sessions, Character-Leases, fachliche Befehle und sitzungsbezogene Projektionen |
 | `simulation/protocol/` | JSON-Codec, Version, Sequenzen, Ergebnis-Deduplikation und Zustellung |
 | `simulation/hosts/native/`, `simulation/hosts/wasm/` | CLI-Frames, Loopback-WebSocket, Takt beziehungsweise C-ABI |
 | `protocol/` | Sprachneutrale JSON-Schemas und gemeinsame Vertragsfixture |
 | `client/src/simulation/` | Transportadapter, Worker, SimulationClient und Projektion |
-| `content/` | Versionierte statische Kartendaten und v1-JSON-Schema |
+| `content/` | Versionierte statische Kartendaten, Wegenetz und v2-JSON-Schema |
 | `client/src/render/` | Kartenvalidierung, Three.js-Geografie, Kamera, Palette und Projektion auf den Bildschirm |
 | `client/src/ui/` | Stadtkarte mit HTML-Markern und Details sowie zwei Debug-Panels auf demselben Simulationshost |
 | `tests/`, `client/tests/` | Native Tests, Client-/Kartentests, Vertragsparität und Browser-Smoke |
 
 ## Domänenkern und Ereignisse
 
-In P0-002 besitzt der Core den Weltzustand mit stabilen IDs. Worker-Eventloop und natives `io_context` serialisieren Befehle, Verbindungsereignisse und Ticks. Jeder Eingang wird bis zum Ende verarbeitet. Der Host validiert und ändert den Zustand, dann erzeugt der Protokoll-Endpunkt Resultate und Deltas aus den neuen Projektionen. Der native Adapter begrenzt seine ausgehende Warteschlange pro Verbindung auf 64 Nachrichten und beendet die Verbindung bei Überlauf. ECS-Komponenten, fachliche Domain Events, Scheduler und RNG bleiben Entwürfe.
+Der Core besitzt den Weltzustand mit stabilen IDs. Worker-Eventloop und natives `io_context` serialisieren Befehle, Verbindungsereignisse und Ticks. Jeder Eingang wird bis zum Ende verarbeitet. Der Host validiert und ändert den Zustand, dann erzeugt der Protokoll-Endpunkt Resultate und Deltas aus den neuen Projektionen. Die zustandsändernden Operationen geben `MovementStarted` und `EntityArrived` nach der jeweiligen Mutation zurück. Diese Ereignisse stehen intern für spätere NPC-Logik zur Verfügung. Der native Adapter begrenzt seine ausgehende Warteschlange pro Verbindung auf 64 Nachrichten und beendet die Verbindung bei Überlauf. ECS, Scheduler und RNG bleiben Entwürfe.
 
 ## Runtime und Performance
-P0-002 startet um 08:00 Uhr. Ein Tick entspricht einer Spielminute. Der native Server und der Worker planen im Normalbetrieb einen Tick pro Sekunde ohne Aufholen versäumter Ticks. Für den Vertragsvergleich bleibt die Uhr in beiden Transporten stehen. Die CLI verarbeitet Ticks nur bei expliziten `tick`-Frames.
+Die Welt startet um 08:00 Uhr. Ein Tick entspricht einer Spielminute. Der native Server und der Worker planen im Normalbetrieb einen Tick pro Sekunde ohne Aufholen versäumter Ticks. Für den Vertragsvergleich geben CLI-Frames, stdin des nativen Testservers und der manuell getaktete Worker dieselbe Tickfolge vor. Diese Taktsteuerung liegt außerhalb des Spielprotokolls.
 
 Fester oder ereignisbasierter Simulationsschritt in Spielzeit, getrennt von Render-FPS. Host injiziert Clock und RNG. Eine autoritative Mutationslane pro Welt; mehrere Netzwerksessions senden in die Queue, keine unkontrollierten Schreibzugriffe. Browser Worker zunächst single-threaded, native ebenfalls; parallele read-only Jobs erst nach Profiling. WASM kann CPU-intensive Logik beschleunigen, garantiert aber keinen Speedup. Batching über ABI/Transport, räumliche Indizes, geplante NPC-Aktivitäten und Simulationsstufen zuerst. Native/WASM sollen mit Seed und Befehlsfolge semantisch gleiche Ergebnisse liefern: stabile Iteration, definierter RNG, Integer/fixed-point für kritische Werte, kanonische Vergleichsprojektionen; Float-Rundung und undefiniertes Verhalten vermeiden. Keine bitgenaue Parität versprechen, bevor getestet.
 
 ## Zustand, Speicherung und Multiplayer
-In P0-002 bleiben die zwei Bewohner samt Geld und Position im Speicher des laufenden Hosts erhalten. Freie Bewohner sind im Leerlauf. Der Ambient-Passant folgt einem kurzen deterministischen Weg. Der Worker lebt pro Browserseite, der native Host pro Prozess.
+Die zwei Bewohner bleiben samt Bargeld, Position und Reiseplan im Speicher des laufenden Hosts erhalten. Freie Bewohner beenden begonnene Reisen und verbleiben anschließend am Zugang. Der Ambient-Passant pendelt über denselben Routenkern zwischen zwei Wegpunkten. Der Worker lebt pro Browserseite, der native Host pro Prozess.
 
 WorldState enthält Bewohner auch ohne Client; Session-/Kontrollrechte sind keine Charakteridentität. Save serialisiert versionierten Zustand, Clock, RNG, Scheduler, laufende Aktionen, Weltdefinitionsversion; keine Socket-/Worker-Handles oder aktiven Client-Leases. Beim Laden ohne Session bleiben Charaktere autonom bzw. durch definierte Recovery-Regel konsistent. Browserhost schreibt über IndexedDB, nativer Host zunächst Datei/StorageAdapter; Core führt kein Dateisystem-I/O aus. Host-seitig autoritative Validierung, Sessionbindung und gezielte Projektion auch im lokalen Betrieb. Remote zusätzlich TLS, Authentifizierung, Autorisierung, Limits, Reconnect und Interest Management vor öffentlicher Freigabe. Lokales WASM ist vom Nutzer manipulierbar; keine ungeprüfte Übernahme lokaler Spielstände in kompetitive Serverwelten.
 
 ## Kartenpfad
 
-`content/breakwater.json` liefert statische Geografie für die Welt `p0-test-world` in lokalen Metern. Der Renderer nutzt dieselben x/z-Koordinaten wie die öffentlichen Charakterpositionen, y ist die Höhe. Beide Transportmodi laden dieselbe gebündelte Kartendefinition. P1 kann diese Geografie für Routing und autoritative Ortsvalidierung in den Core einbinden.
+`content/breakwater.json` liefert statische Geografie und den Graphen für die Welt `p0-test-world` in lokalen Metern. CMake bettet die JSON-Bytes reproduzierbar in beide Builds ein. Der Content-Adapter liest und validiert die Geografie beim Hoststart und übergibt dem Core eine typisierte Weltdefinition. Vite bündelt dieselbe Datei für die Karte. Der Renderer nutzt dieselben x/z-Koordinaten wie die öffentlichen Charakterpositionen, y ist die Höhe.
 
-`MapViewport` reicht lesende Marker, Auswahl und Spielminuten an den Renderer. Die orthografische Kamera bewegt sich in einer Szene. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Statische Geometrien werden einmal pro Mount aufgebaut. Orts- und Charaktermarker bleiben als HTML-Schaltflächen per Tastatur bedienbar. Bei dichter Lage halten Führungslinien ihre Verbindung zur projizierten Position. `MapView` nimmt Befehle entgegen und zeigt Steuerrechte und privates Bargeld erst aus der autoritativen Projektion an. Bei einer Resynchronisierung blendet sie die Live-Marker bis zum Snapshot aus. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu.
+`MapViewport` reicht lesende Marker, Route, Auswahl und Spielminuten an den Renderer. Die orthografische Kamera bewegt sich in einer Szene. Die Gebäudehöhe geht stufenlos auf null, während die Kamera ins Top-down kippt. Orts- und Charaktermarker bleiben als HTML-Schaltflächen per Tastatur bedienbar. Bei dichter Lage halten Führungslinien ihre Verbindung zur projizierten Position. `MapView` nimmt Befehle entgegen und zeigt Steuerrechte, Reisezustand und privates Bargeld aus der autoritativen Projektion. Bei einer Resynchronisierung blendet die Karte Live-Marker und Route bis zum Snapshot aus und lädt bei Bedarf eine frische Vorschau. Der Debugger wird über `?view=debug` geöffnet und greift mit Client A auf dieselbe Session zu.

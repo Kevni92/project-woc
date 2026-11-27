@@ -2,7 +2,7 @@
 
 Kartenbasiertes Browser-Crime-RPG mit eigenständig simulierter Welt. Inspiration: GTA-Kartenansicht und klassische Browser-RPGs wie World of Drugs. Eigenständige IP.
 
-**Stand.** Breakwater ist die interaktive Stadtkarte aus P0-001. Karte und Simulations-Debugger verwenden denselben C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
+**Stand.** In Breakwater können übernommene Bewohner zu sechs Orten laufen. Karte und Simulations-Debugger verwenden denselben autoritativen C++-Kern über den WebAssembly-Worker oder den nativen Loopback-WebSocket-Host.
 
 ## Lokal bauen und starten
 
@@ -42,7 +42,9 @@ npm --prefix client run dev -- --host 127.0.0.1 --port 5173 --strictPort
 
 Die Karte verbindet beim ersten Öffnen automatisch. Ziehen und Pfeiltasten verschieben den Ausschnitt. Mausrad, Zwei-Finger-Geste oder Plus/Minus zoomen. Die Fokustaste zentriert den eigenen Charakter oder den Startbereich. Die Übersichtstaste oder Pos1 setzt den Ausschnitt zurück. Orte und Charaktere lassen sich auf der Karte oder in der Seitenleiste auswählen. Ein Klick auf ein Gebäude zeigt Viertel und Höhe. Die Karte benötigt WebGL 2. [Three.js-Dokumentation](https://threejs.org/docs/pages/WebGLRenderer.html)
 
-**Debugger** öffnet `?view=debug` mit derselben Transportkonfiguration. Client A teilt seine Session mit der Stadtkarte. Bei direktem Debugger-Aufruf startet jede Session über **Verbinden**. Mit **Testaktion** ändern sich Position und eigenes Bargeld auf dem Host. **Zur Stadtkarte** zeigt die neue Position. **Snapshot anfordern** lädt die Projektion neu.
+Wähle Ada oder Ben und klicke auf **Übernehmen**. Wähle anschließend einen Ort. Die Karte zeigt die Gehroute, Entfernung und Dauer in Spielminuten. **Zu Fuß gehen** startet die Reise. Ziel und verbleibende Zeit stehen in den Kartendetails. Eine Spielminute entspricht ungefähr einer realen Sekunde. Eine begonnene Reise läuft im Host auch bei Freigabe, Charakterwechsel oder Disconnect weiter.
+
+**Debugger** öffnet `?view=debug` mit derselben Transportkonfiguration. Client A teilt seine Session mit der Stadtkarte. Bei direktem Debugger-Aufruf startet jede Session über **Verbinden**. Die Schaltfläche **Zu Fuß zu …** startet eine echte Reise. **Zur Stadtkarte** zeigt die laufende Route oder die Ankunft. **Snapshot anfordern** lädt die Projektion neu.
 
 ## Vertragstests und Browser-Smoke
 
@@ -56,7 +58,7 @@ npm --prefix client exec -- playwright install chromium
 npm --prefix client run test:e2e
 ```
 
-Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die gemeinsame Fixture steht in [P0-002](tasks/P0-002-dual-runtime.md). Die Prüfungen der Stadtkarte sind in [P0-001](tasks/P0-001-map-prototype.md) dokumentiert.
+Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` oder `tick`), bei Bedarf `connection` und für `send` das Protokollobjekt `message`. Sie gibt pro Zeile ein JSON-Array der zugestellten Nachrichten aus. Die Paritätsprüfung führt dieselben Befehle und Ticks über CLI, Worker und WebSocket aus. Mit `--manual-clock-stdin` liest der native Server pro Tick eine Zeile `tick` von stdin. Fixture und Prüfungen stehen in [P1-001](tasks/P1-001-movement.md).
 
 ## Dokumentation
 | Datei | Zweck |
@@ -74,7 +76,7 @@ Die native CLI liest je Zeile einen Testframe mit `op` (`open`, `send`, `close` 
 | [Arbeitsweise](docs/workflow.md) | Konzept- und KI-Implementierungsprozess |
 | [P0-001](tasks/P0-001-map-prototype.md) | Interaktive Karte |
 | [P0-002](tasks/P0-002-dual-runtime.md) | Native/WASM-Simulation mit identischem Protokoll |
-| [P1-001](tasks/P1-001-movement.md) | Autoritatives Wegenetz und Fußreisen (nächster Task) |
+| [P1-001](tasks/P1-001-movement.md) | Autoritatives Wegenetz und Fußreisen |
 | [P1-002](tasks/P1-002-character-routines.md) | Bewohner und Tagespläne (Entwurf) |
 | [P1-003](tasks/P1-003-npc-behavior.md) | NPC-Entscheidungen und Ambient-Population (Entwurf) |
 

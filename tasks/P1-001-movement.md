@@ -1,5 +1,5 @@
 # P1-001 — Wegenetz und zeitbasierte Bewegung
-Status: geplant. Entwurfswerte dieses Tasks dienen dem Prototyp.
+Status. Erledigt und geprüft am 2026-11-27. Die Bewegungswerte dienen dem Prototyp.
 Abhängigkeiten: [P0-001](P0-001-map-prototype.md), [P0-002](P0-002-dual-runtime.md).
 Grundlagen: [Welt](../docs/design/world.md), [Simulation](../docs/design/simulation.md), [Protokoll](../docs/architecture/protocol.md).
 
@@ -25,16 +25,33 @@ Ein kontrollierter Bewohner kann einen der sechs Orte von Breakwater auswählen,
 - Bei Resync/Disconnect/Revisionswechsel veraltete Vorschau verwerfen; Route/Status aus frischem Hostzustand ableiten. Beide Transporte, Debugansicht und bestehende Kartengesten erhalten.
 
 ## Abnahmekriterien
-- [ ] Alle sechs Orte sind vom Startbereich über valide Wege erreichbar, jede Route nutzt tatsächliche Kanten/Zuwege. Fehlerhafte oder unerreichbare Ziele werden abgelehnt.
-- [ ] Zwei Sessions übernehmen verschiedene Bewohner und können unabhängig reisen; fremde Figur lässt sich nicht bewegen. Doppelte Request-ID startet Reise nicht erneut.
-- [ ] Reisezeit und Zwischenpositionen entsprechen Distanz und Spieluhr; kein Teleport, exakte Zielposition, genau eine Ankunft; Tageswechsel während Reise möglich.
-- [ ] Freigabe, Übernahme während Reise, Disconnect und verlorenes Delta erhalten konsistenten Reisezustand. Kein Geldgewinn durch Bewegung.
-- [ ] Vorschau, Reise, Route und Ankunft funktionieren sichtbar in identischer Karte über WASM und WebSocket. Native CLI/WASM/WS liefern semantisch gleiche Ergebnisse bei identischen Ticks/Commands.
-- [ ] Native Tests: Graphvalidierung, Kreuzungen, kürzester Weg, Tie-Break, Start/Ziel gleich, unerreichbares Ziel, Kantenfortschritt, mehrere Kanten pro Tick, Ankunft, Rechte und Lease-Wechsel. Clienttests: Schema, Projektion/Resync; Playwright beide Transporte mit echter Reise; alte Kartentests bleiben erhalten.
-- [ ] Native/WASM-Builds, Typecheck, Vite-Build und Testläufe tatsächlich durchführen. Dokumentation/README/Task/Roadmap/Entscheidungslog aktualisieren; Einschränkungen notieren. Kleine nachvollziehbare Commits.
+- [x] Alle sechs Orte sind vom Startbereich über valide Wege erreichbar, jede Route nutzt tatsächliche Kanten/Zuwege. Fehlerhafte oder unerreichbare Ziele werden abgelehnt.
+- [x] Zwei Sessions können unabhängig reisen. Eine fremde Figur lässt sich nicht bewegen. Eine doppelte Request-ID startet keine weitere Reise.
+- [x] Reisezeit und Zwischenpositionen entsprechen Distanz und Spieluhr. Die Figur erreicht den exakten Zugang und löst genau eine Ankunft aus. Tageswechsel während einer Reise sind möglich.
+- [x] Freigabe, Übernahme während einer Reise, Disconnect und verlorene Deltas erhalten den Reisezustand. Bargeld bleibt bei Bewegung unverändert.
+- [x] Vorschau, Reise, Route und Ankunft sind in beiden Kartenmodi über WASM und WebSocket sichtbar. CLI, WASM und WebSocket liefern bei identischen Ticks und Befehlen semantisch gleiche Ergebnisse.
+- [x] Native Tests prüfen Graphvalidierung, Kreuzungen, kürzesten Weg, Tie-Break, Start gleich Ziel, unerreichbare Ziele, Kantenfortschritt, mehrere Kanten pro Tick, Ankunft, Rechte und Lease-Wechsel. Client- und Playwright-Tests prüfen Vertrag, Projektion, Resync und echte Reisen über beide Transporte. Die Kartengesten bleiben abgedeckt.
+- [x] Native und WASM-Builds, Typecheck, Vite-Build und Tests wurden ausgeführt. README, Architektur, Task, Roadmap und Entscheidungslog sind aktualisiert.
 
 ## Nicht im Umfang
 Autos, freie Klickziele außerhalb bekannter Orte, NPC-Arbeit/Tagespläne, Utility AI, komplexer Scheduler, Verkehr, Wirtschaft, Inventar, Persistenz, Karteneditor, neue Stadt, Netcode-Umbau. Die vorhandene Uhr und Tag-/Nachtpalette bleiben bestehen.
 
 ## Ergebnis
-Ausstehend.
+`content/breakwater.json` enthält 61 Knoten, 78 Fußwegkanten, sechs Zugänge und die Startpositionen. Die sichtbaren Ortsmarker behalten ihre Koordinaten. Leicht versetzte Straßenlinien schließen an den Kreuzungen an. Die Gartenstraße führt um `dock-04`. Ben startet bei (10 m, 4 m) auf einer Kante. Der Passant pendelt zwischen zwei Wegpunkten an der Civic Avenue. Beide Hosts laden die beim Build eingebettete Content-Version 2.
+
+`simulation/core/` berechnet und verfolgt die Reise für Bewohner und Passant. Der Host gibt intern `MovementStarted` und `EntityArrived` zurück. Protokoll v2 überträgt nur die Route der eigenen Figur. Die frühere `TestAction` wurde durch echte Reisen ersetzt. Die ursprünglichen Prüfungen für Lease, Deduplikation, Datenschutz, Disconnect und Parität verwenden jetzt `MoveTo`.
+
+Die ETA wird für die gesamte Strecke auf den ersten ausreichenden Tick aufgerundet. Ein Ziel mit Distanz null liefert eine Vorschau mit null Spielminuten. `MoveTo` ergibt dann `ALREADY_AT_LOCATION`. Marker übernehmen die Hostposition im Sekundentakt. Während einer Resynchronisierung wartet die Karte auf die neue Projektion. Nach einem Hostneustart startet Breakwater wieder im Ausgangszustand.
+
+### Ausgeführte Prüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| CMake `native` und `wasm` | Konfiguration und Build erfolgreich auf Windows x64 mit MSVC und Emscripten 4.0.23 |
+| `ctest --preset native` | 1 von 1 Testprogramm bestanden. Graph, Reisezeit, Tageswechsel, Ereignisse, Rechte und Protokoll |
+| `npm ci` und Typecheck | Erfolgreich. Typecheck mit 0 Fehlern und 0 Warnungen |
+| Vitest | 14 von 14 bestanden |
+| Vite-Build | Erfolgreich. Hinweis zur Größe des Karten-Bundles |
+| Playwright Chromium | 10 von 10 bestanden. CLI-Parität mit festen Ticks, Snapshot-Recovery nach verlorenem Reisestart-Delta, Route in 2D und 3D, laufende Reise und Ankunft über beide Transporte. Debugger-, Startfehler- und Kartengesten-Regressionen |
+
+Die Vertragsfixture vergleicht Reisen zweier Sessions, darunter Übernahme im Transit und Ankunft ohne Lease. [Fixture](../protocol/fixtures/dual-runtime.json)
