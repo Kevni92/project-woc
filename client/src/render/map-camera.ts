@@ -5,7 +5,8 @@ const GROUND = new Plane(new Vector3(0, 1, 0));
 const MIN_SPAN = 20;
 export const FOCUS_SPAN = 76;
 const MAX_DETAIL_TILT = Math.PI * 0.29;
-const MAX_DETAIL_AZIMUTH = Math.PI * 0.08;
+const TAU = 2 * Math.PI;
+const wrapAngle = (angle: number) => MathUtils.euclideanModulo(angle + Math.PI, TAU) - Math.PI;
 
 export function detailAt(span: number): number {
   return 1 - MathUtils.smoothstep(span, 135, 650);
@@ -18,6 +19,8 @@ export class MapCamera {
   private readonly target = new Vector3();
   private span = 1;
   private targetSpan = 1;
+  private yaw = 0;
+  private targetYaw = 0;
   private aspect = 1;
   private anchor?: { screen: Vector2; world: Vector3 };
   private fitted = true;
@@ -30,8 +33,7 @@ export class MapCamera {
   get detail() { return detailAt(this.span); }
   get verticalSpan() { return this.span; }
   get northAngle() {
-    const azimuth = this.detail * MAX_DETAIL_AZIMUTH;
-    return Math.atan2(Math.sin(azimuth), Math.cos(azimuth) * Math.cos(this.detail * MAX_DETAIL_TILT));
+    return Math.atan2(Math.sin(this.yaw), Math.cos(this.yaw) * Math.cos(this.detail * MAX_DETAIL_TILT));
   }
 
   private get fitSpan() {
@@ -53,6 +55,7 @@ export class MapCamera {
     this.fitted = true;
     this.target.set((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
     this.targetSpan = this.fitSpan;
+    this.orientNorth();
     this.anchor = undefined;
   }
 
@@ -75,8 +78,21 @@ export class MapCamera {
 
   stop() {
     this.targetSpan = this.span;
+    this.targetYaw = this.yaw;
     this.target.copy(this.center);
     this.anchor = undefined;
+  }
+
+  rotate(radians: number, immediate = false) {
+    this.targetYaw = wrapAngle(this.targetYaw + radians);
+    if (immediate) {
+      this.yaw = this.targetYaw;
+      this.updateCamera();
+    }
+  }
+
+  orientNorth() {
+    this.targetYaw = 0;
   }
 
   pan(from: Vector2, to: Vector2) {
@@ -93,11 +109,13 @@ export class MapCamera {
   }
 
   advance(seconds: number, snap = false): boolean {
+    const turn = wrapAngle(this.targetYaw - this.yaw);
     const moving = Math.abs(this.span - this.targetSpan) > 0.02
-      || this.center.distanceToSquared(this.target) > 0.0004;
+      || this.center.distanceToSquared(this.target) > 0.0004 || Math.abs(turn) > 0.0001;
     const blend = snap || !moving ? 1 : 1 - Math.exp(-14 * seconds);
     this.span = MathUtils.lerp(this.span, this.targetSpan, blend);
     this.center.lerp(this.target, blend);
+    this.yaw = blend === 1 ? this.targetYaw : wrapAngle(this.yaw + blend * turn);
     this.updateCamera();
     if (this.anchor) {
       this.center.add(this.anchor.world.clone().sub(this.groundAt(this.anchor.screen)));
@@ -116,7 +134,7 @@ export class MapCamera {
     camera.top = halfHeight;
     camera.bottom = -halfHeight;
     const angle = this.detail * MAX_DETAIL_TILT;
-    const azimuth = this.detail * MAX_DETAIL_AZIMUTH;
+    const azimuth = this.yaw;
     const offset = Math.sin(angle) * 2000;
     camera.position.set(this.center.x + Math.sin(azimuth) * offset, Math.cos(angle) * 2000,
       this.center.z + Math.cos(azimuth) * offset);

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { city } from '../render/city-data';
   import type { Point } from '../render/city-data';
   import type { CommandResult, RoutePreviewResult } from '../simulation/protocol';
@@ -12,6 +12,10 @@
 
   let { client, debugUrl, ondebug }: { client: SimulationClient; debugUrl: string; ondebug: (event: MouseEvent) => void } = $props();
   let viewport: MapViewport;
+  let directory = $state<'places' | 'characters'>();
+  let directoryTrigger: HTMLElement | undefined;
+  let selectionOrigin: HTMLElement | undefined;
+  let closeSelection: HTMLButtonElement;
   let session = $state.raw<ClientState>();
   let pending = $state(false);
   let awaitingRevision = $state<number>();
@@ -68,10 +72,46 @@
     return () => { current = false; };
   });
 
-  function select(next?: Selection, focusPoint?: Point) {
+  function select(next?: Selection, origin?: HTMLElement, focusPoint?: Point) {
     selection = next;
     actionError = undefined;
+    if (!next) {
+      selectionOrigin = undefined;
+      return;
+    }
+    directory = undefined;
+    if (origin) {
+      selectionOrigin = origin;
+      void tick().then(() => closeSelection?.focus({ preventScroll: true }));
+    }
     if (focusPoint) viewport.focus(focusPoint);
+  }
+
+  function closeDetails() {
+    const origin = selectionOrigin;
+    select();
+    if (origin?.isConnected && origin.getClientRects().length) origin.focus({ preventScroll: true });
+    else viewport.focusSurface();
+  }
+
+  function toggleDirectory(next: typeof directory, trigger: HTMLElement) {
+    directory = directory === next ? undefined : next;
+    directoryTrigger = trigger;
+    if (directory) select();
+  }
+
+  function fromDirectory(next: Selection, position: Point) {
+    select(next, directoryTrigger, position);
+  }
+
+  function escape(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || (!selection && !directory)) return;
+    event.preventDefault();
+    if (selection) closeDetails();
+    else {
+      directory = undefined;
+      directoryTrigger?.focus({ preventScroll: true });
+    }
   }
 
   async function run(operation: () => Promise<CommandResult | void>) {
@@ -89,9 +129,114 @@
   }
 </script>
 
-<header class="atlas-header">
-  <div class="atlas-header-inner">
-    <div class="atlas-logo"><span aria-hidden="true">◈</span> PROJECT <strong>WOC</strong></div>
+<svelte:window onkeydown={escape} />
+
+{#snippet context()}
+  <section class="map-details" aria-label="Auswahl">
+  <div class="details-heading">
+    <p class="atlas-kicker">{selectedLocation?.type ?? (selectedBuilding ? 'Gebäude' : 'Charakter')}</p>
+    <button class="clear-selection" aria-label="Auswahl schließen" bind:this={closeSelection} onclick={closeDetails}>×</button>
+  </div>
+  {#if selectedLocation}
+    <h2>{selectedLocation.name}</h2>
+    <p class="detail-meta">{districtName(selectedLocation.district)}</p>
+    <p class="detail-description">{selectedLocation.description}</p>
+    {#if proposedRoute}
+      {#if proposedRoute.distanceMm > 0}
+        <p class="detail-meta route-preview">{meters.format(proposedRoute.distanceMm / 1000)} m · {proposedRoute.durationTicks} Spielmin.</p>
+        {@const ownId = characterId}
+        {@const destinationId = selectedLocation.id}
+        {#if ownId}
+          <button class="detail-action claim" disabled={!projection.canCommand}
+            onclick={() => run(() => client.moveTo(ownId, destinationId))}>Zu Fuß gehen</button>
+        {/if}
+      {:else}
+        <p class="detail-meta">Bereits am Ziel</p>
+      {/if}
+    {:else if previewResult && !previewResult.accepted}
+      <p class="atlas-error" role="alert">{previewResult.code}</p>
+    {/if}
+  {:else if selectedBuilding}
+    <h2>{selectedBuilding.id.toUpperCase()}</h2>
+    <p class="detail-meta">{districtName(selectedBuilding.district)} · {selectedBuilding.height} m Höhe</p>
+    {#each city.locations.filter(location => location.building === selectedBuilding?.id) as location (location.id)}
+      <button class="detail-action" onclick={() => select({ kind: 'location', id: location.id })}>{location.name} ↗</button>
+    {/each}
+  {:else if selectedCharacter}
+    {@const marker = selectedCharacter}
+    <h2>{marker.name}</h2>
+    <p class="detail-meta">{markerLabels[marker.kind]}</p>
+    <dl class="character-details">
+      <div><dt>Position</dt><dd>{meters.format(marker.position[0])} m / {meters.format(marker.position[1])} m</dd></div>
+      {#if marker.kind === 'owned'}<div><dt>Bargeld</dt><dd>{projection.cash}</dd></div>{/if}
+    </dl>
+    {#if marker.kind === 'owned'}
+      <button class="detail-action" disabled={!projection.canCommand}
+        onclick={() => run(() => client.releaseCharacter(marker.id))}>Freigeben</button>
+    {:else if marker.kind === 'resident' || marker.kind === 'occupied'}
+      <button class="detail-action claim" disabled={!projection.canCommand || marker.kind === 'occupied'}
+        onclick={() => run(() => client.acquireCharacter(marker.id))}>Übernehmen</button>
+    {/if}
+  {/if}
+  </section>
+{/snippet}
+
+<main class="atlas">
+  <header class="atlas-navigation">
+    <div class="atlas-brand">
+      <div class="atlas-logo"><span aria-hidden="true">◈</span> PROJECT WOC</div>
+      <h1>{city.name}</h1>
+    </div>
+    <nav class="atlas-menu" aria-label="Kartenmenü">
+      <button aria-expanded={directory === 'places'} aria-controls="map-places"
+        onclick={event => toggleDirectory('places', event.currentTarget)}>Orte</button>
+      <button aria-expanded={directory === 'characters'} aria-controls="map-characters"
+        onclick={event => toggleDirectory('characters', event.currentTarget)}>Charaktere</button>
+      <a class="debug-link" href={debugUrl} onclick={ondebug}>Debugger <span aria-hidden="true">↗</span></a>
+    </nav>
+    <section class="atlas-directory" id="map-places" aria-label="Orte" hidden={directory !== 'places'}>
+      <ul>
+        {#each city.locations as location (location.id)}
+          <li>
+            <button class="directory-item" aria-pressed={selectedLocation?.id === location.id}
+              onclick={() => fromDirectory({ kind: 'location', id: location.id }, location.position)}>
+              <span class="legend-location"></span>
+              <span>{location.name}<small>{districtName(location.district)}</small></span>
+              <span class="directory-arrow" aria-hidden="true">↗</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </section>
+
+    <section class="atlas-directory" id="map-characters" aria-label="Charaktere" hidden={directory !== 'characters'}>
+      {#if projection.markers.length}
+        <ul>
+          {#each projection.markers as marker (marker.id)}
+            <li>
+              <button class="directory-item {marker.kind}" aria-pressed={selectedCharacter?.id === marker.id}
+                onclick={() => fromDirectory({ kind: 'character', id: marker.id }, marker.position)}>
+                <span class="marker-symbol"></span>
+                <span>{marker.name}<small>{markerLabels[marker.kind]}</small></span>
+                <span class="directory-arrow" aria-hidden="true">↗</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="directory-empty">{projection.synchronizing ? 'Warte auf den Weltzustand.' : 'Keine Live-Daten.'}</p>
+      {/if}
+    </section>
+  </header>
+
+  <div class="atlas-session">
+    <dl class="atlas-telemetry">
+      <div><dt>Spielzeit</dt><dd>{projection.gameMinutes === undefined ? '–' : formatClock(projection.gameMinutes)}</dd></div>
+      {#if projection.controlled}
+        <div><dt>Steuerung</dt><dd>{projection.controlled.name}</dd></div>
+        <div><dt>Bargeld</dt><dd>{projection.cash}</dd></div>
+      {/if}
+    </dl>
     <div class="atlas-status">
       <span class="atlas-live" class:online={session?.status === 'connected' && !projection.synchronizing} role="status">
         {projection.synchronizing ? 'Synchronisiert …' : session?.status === 'connected' ? 'Verbunden'
@@ -103,138 +248,23 @@
         <button class="atlas-quiet" disabled={pending} onclick={() => run(() => client.connect())}>Verbinden</button>
       {/if}
     </div>
-    <a class="debug-link" href={debugUrl} onclick={ondebug}>Debugger <span aria-hidden="true">↗</span></a>
-  </div>
-</header>
-
-<main class="atlas">
-  <div class="atlas-title">
-    <div>
-      <p class="atlas-kicker">Stadtkarte</p>
-      <h1>{city.name}</h1>
-    </div>
-    <dl class="atlas-telemetry">
-      <div>
-        <dt>Spielzeit</dt>
-        <dd>{projection.gameMinutes === undefined ? '–' : formatClock(projection.gameMinutes)}</dd>
-      </div>
-      <div>
-        <dt>Steuerung</dt>
-        <dd>{projection.controlled?.name ?? '–'}</dd>
-      </div>
-    </dl>
   </div>
 
-  <div class="atlas-body">
-    <div class="atlas-map">
-      <MapViewport bind:this={viewport} markers={projection.markers} gameMinutes={projection.gameMinutes}
-        {selection} {route} focusPoint={projection.controlled?.position} onselect={select} />
-      <ul class="map-legend" aria-label="Kartenlegende">
-        <li class="owned"><span class="marker-symbol"></span> Eigene Steuerung</li>
-        <li class="resident"><span class="marker-symbol"></span> Bewohner</li>
-        <li class="ambient"><span class="marker-symbol"></span> Passant</li>
-        <li><span class="legend-location"></span> Ort</li>
-      </ul>
-    </div>
-
-    <aside class="atlas-sidebar" aria-label="Kartendetails">
-      {#if session?.error || actionError}
-        <p class="atlas-error" role="alert">{session?.error ?? actionError}</p>
-      {/if}
-      {#if projection.travel && travelDestination}
-        <section class="map-details travel-details" aria-label="Laufende Reise">
-          <p class="atlas-kicker">Zu Fuß unterwegs</p>
-          <h2>{travelDestination.name}</h2>
-          <p class="detail-meta">Noch {projection.travel.remainingTicks} Spielmin.</p>
-        </section>
-      {:else if arrivedAt}
-        <p class="travel-arrival" role="status">Angekommen · {arrivedAt.name}</p>
-      {/if}
-      {#if selectedLocation || selectedBuilding || selectedCharacter}
-        <section class="map-details" aria-label="Auswahl">
-          <div class="details-heading">
-            <p class="atlas-kicker">{selectedLocation?.type ?? (selectedBuilding ? 'Gebäude' : 'Charakter')}</p>
-            <button class="clear-selection" aria-label="Auswahl schließen" onclick={() => select()}>×</button>
-          </div>
-          {#if selectedLocation}
-            <h2>{selectedLocation.name}</h2>
-            <p class="detail-meta">{districtName(selectedLocation.district)}</p>
-            <p class="detail-description">{selectedLocation.description}</p>
-            {#if proposedRoute}
-              {#if proposedRoute.distanceMm > 0}
-                <p class="detail-meta route-preview">{meters.format(proposedRoute.distanceMm / 1000)} m · {proposedRoute.durationTicks} Spielmin.</p>
-                {@const ownId = characterId}
-                {@const destinationId = selectedLocation.id}
-                {#if ownId}
-                  <button class="detail-action claim" disabled={!projection.canCommand}
-                    onclick={() => run(() => client.moveTo(ownId, destinationId))}>Zu Fuß gehen</button>
-                {/if}
-              {:else}
-                <p class="detail-meta">Bereits am Ziel</p>
-              {/if}
-            {:else if previewResult && !previewResult.accepted}
-              <p class="atlas-error" role="alert">{previewResult.code}</p>
-            {/if}
-          {:else if selectedBuilding}
-            <h2>{selectedBuilding.id.toUpperCase()}</h2>
-            <p class="detail-meta">{districtName(selectedBuilding.district)} · {selectedBuilding.height} m Höhe</p>
-            {#each city.locations.filter(location => location.building === selectedBuilding?.id) as location (location.id)}
-              <button class="detail-action" onclick={() => select({ kind: 'location', id: location.id })}>{location.name} ↗</button>
-            {/each}
-          {:else if selectedCharacter}
-            {@const marker = selectedCharacter}
-            <h2>{marker.name}</h2>
-            <p class="detail-meta">{markerLabels[marker.kind]}</p>
-            <dl class="character-details">
-              <div><dt>Position</dt><dd>{meters.format(marker.position[0])} m / {meters.format(marker.position[1])} m</dd></div>
-              {#if marker.kind === 'owned'}<div><dt>Bargeld</dt><dd>{projection.cash}</dd></div>{/if}
-            </dl>
-            {#if marker.kind === 'owned'}
-              <button class="detail-action" disabled={!projection.canCommand}
-                onclick={() => run(() => client.releaseCharacter(marker.id))}>Freigeben</button>
-            {:else if marker.kind === 'resident' || marker.kind === 'occupied'}
-              <button class="detail-action claim" disabled={!projection.canCommand || marker.kind === 'occupied'}
-                onclick={() => run(() => client.acquireCharacter(marker.id))}>Übernehmen</button>
-            {/if}
-          {/if}
-        </section>
-      {/if}
-
-      <section class="atlas-directory" aria-labelledby="places-heading">
-        <h2 id="places-heading">Orte</h2>
-        <ul>
-          {#each city.locations as location (location.id)}
-            <li>
-              <button class="directory-item" aria-pressed={selectedLocation?.id === location.id}
-                onclick={() => select({ kind: 'location', id: location.id }, location.position)}>
-                <span class="legend-location"></span>
-                <span>{location.name}<small>{districtName(location.district)}</small></span>
-                <span class="directory-arrow" aria-hidden="true">↗</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
+  <div class="atlas-feedback">
+    {#if session?.error || actionError}
+      <p class="atlas-error" role="alert">{session?.error ?? actionError}</p>
+    {/if}
+    {#if projection.travel && travelDestination}
+      <section class="travel-details" aria-label="Laufende Reise">
+        <p class="atlas-kicker">Zu Fuß unterwegs</p>
+        <h2>{travelDestination.name}</h2>
+        <p class="detail-meta">Noch {projection.travel.remainingTicks} Spielmin.</p>
       </section>
-
-      <section class="atlas-directory" aria-labelledby="characters-heading">
-        <h2 id="characters-heading">Charaktere</h2>
-        {#if projection.markers.length}
-          <ul>
-            {#each projection.markers as marker (marker.id)}
-              <li>
-                <button class="directory-item {marker.kind}" aria-pressed={selectedCharacter?.id === marker.id}
-                  onclick={() => select({ kind: 'character', id: marker.id }, marker.position)}>
-                  <span class="marker-symbol"></span>
-                  <span>{marker.name}<small>{markerLabels[marker.kind]}</small></span>
-                  <span class="directory-arrow" aria-hidden="true">↗</span>
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {:else}
-          <p class="directory-empty">{projection.synchronizing ? 'Warte auf den Weltzustand.' : 'Keine Live-Daten.'}</p>
-        {/if}
-      </section>
-    </aside>
+    {:else if arrivedAt}
+      <p class="travel-arrival" role="status">Angekommen · {arrivedAt.name}</p>
+    {/if}
   </div>
+  <MapViewport bind:this={viewport} markers={projection.markers} gameMinutes={projection.gameMinutes}
+    {selection} {route} focusPoint={projection.controlled?.position} onselect={select}
+    details={selectedLocation || selectedBuilding || selectedCharacter ? context : undefined} />
 </main>

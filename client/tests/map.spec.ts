@@ -40,7 +40,11 @@ for (const mode of ['wasm', 'ws'] as const) {
       }, (await canvas.screenshot()).toString('base64'));
 
       await expect(modeLabel).toHaveText('2D');
+      const placesToggle = page.getByRole('button', { name: 'Orte', exact: true });
+      await expect(placesToggle).toHaveAttribute('aria-expanded', 'false');
+      await placesToggle.click();
       await expect(places.getByRole('button')).toHaveCount(6);
+      await placesToggle.click();
       await expect(map.locator('.location-pin')).toHaveCount(6);
       await map.getByRole('button', { name: 'Café Tide' }).click();
       await expect(details.getByRole('heading', { name: 'Café Tide' })).toBeVisible();
@@ -74,6 +78,7 @@ for (const mode of ['wasm', 'ws'] as const) {
       await details.getByRole('button', { name: 'Übernehmen' }).click();
       await expect(ada).toHaveClass(/owned/);
       await expect(details.getByText('100', { exact: true })).toBeVisible();
+      await page.keyboard.press('Escape');
       const initialMarkerX = await ada.evaluate(element => element.style.left);
       await map.getByRole('button', { name: 'Eigenen Charakter fokussieren' }).click();
       await expect(modeLabel).toHaveText('3D');
@@ -150,18 +155,88 @@ for (const mode of ['wasm', 'ws'] as const) {
   });
 }
 
-test('the city remains usable after a narrow viewport resize', async ({ page }) => {
+test('fullscreen overlays, rotation and mobile lists keep the map usable', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 960 });
   await page.goto('/');
   const map = page.getByRole('region', { name: 'Stadtkarte' });
-  await expect(map.locator('.location-pin')).toHaveCount(6);
-  await page.setViewportSize({ width: 375, height: 750 });
-  await expect.poll(() => map.locator('canvas').evaluate((canvas: HTMLCanvasElement) => canvas.width)).toBeLessThan(375);
-  await expect(map.locator('.location-pin')).toHaveCount(6);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
+  const canvas = map.locator('canvas');
   const keyboard = map.getByRole('application');
+  const compass = map.getByRole('button', { name: 'Nach Norden ausrichten' });
+  const pin = map.getByRole('button', { name: 'Café Tide' });
+  const angle = () => compass.locator('i').evaluate(element => Number(element.style.transform.match(/rotate\((.+)rad\)/)?.[1]));
+  await expect(map.locator('.location-pin')).toHaveCount(6);
+  await expect.poll(() => canvas.boundingBox()).toEqual({ x: 0, y: 0, width: 1440, height: 960 });
+  const initialPin = await pin.boundingBox();
+  await keyboard.focus();
+  for (let quarter = 1; quarter <= 4; quarter++) {
+    for (let turn = 0; turn < 3; turn++) await keyboard.press('e');
+    await expect.poll(async () => Math.cos(await angle())).toBeCloseTo(Math.cos(quarter * Math.PI / 2));
+    await expect.poll(async () => Math.sin(await angle())).toBeCloseTo(Math.sin(quarter * Math.PI / 2));
+    await pin.click();
+    await expect(page.getByRole('region', { name: 'Auswahl' }).getByRole('heading', { name: 'Café Tide' })).toBeVisible();
+    await expect(map.locator('.popover-leader')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(pin).toBeFocused();
+    await keyboard.focus();
+  }
+  const finalPin = await pin.boundingBox();
+  expect(finalPin!.x).toBeCloseTo(initialPin!.x);
+  expect(finalPin!.y).toBeCloseTo(initialPin!.y);
+  await page.mouse.move(700, 450);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(525, 450, { steps: 8 });
+  await page.mouse.up({ button: 'right' });
+  await expect.poll(async () => Math.round(await angle() * 10)).toBe(-16);
+  const rotatedDock = await canvas.evaluate((element: HTMLCanvasElement) => {
+    const span = 1120;
+    const yaw = -175 * 0.009;
+    return {
+      x: element.clientWidth / 2 + (140 * Math.cos(yaw) - 340 * Math.sin(yaw)) * element.clientHeight / span,
+      y: element.clientHeight / 2 + (140 * Math.sin(yaw) + 340 * Math.cos(yaw)) * element.clientHeight / span,
+    };
+  });
+  await canvas.click({ position: rotatedDock });
+  await expect(page.getByRole('heading', { name: 'DOCK-09' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await compass.click();
+  await expect.poll(angle).toBe(0);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect.poll(() => canvas.boundingBox()).toEqual({ x: 0, y: 0, width: 375, height: 812 });
+  await expect(map.locator('.location-pin')).toHaveCount(6);
+  expect(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]))
+    .toEqual([375, 812]);
+  await page.getByRole('button', { name: 'Charaktere', exact: true }).click();
+  await page.getByRole('region', { name: 'Charaktere' }).getByRole('button', { name: /Ada/ }).click();
+  const panel = page.getByRole('region', { name: 'Auswahl' });
+  await expect(panel.getByRole('button', { name: 'Übernehmen' })).toBeVisible();
+  const [sheet, controls] = await Promise.all([panel.boundingBox(), compass.boundingBox()]);
+  expect(sheet!.y + sheet!.height).toBeLessThan(controls!.y);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Charaktere', exact: true })).toBeFocused();
   await keyboard.focus();
   for (let step = 0; step < 3; step++) await keyboard.press('+');
   await expect(map.getByLabel('Kartendarstellung')).toHaveText('3D');
   await keyboard.press('Home');
   await expect(map.getByLabel('Kartendarstellung')).toHaveText('2D');
+});
+
+test('directories and actions work when WebGL 2 is unavailable', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...args: unknown[]) {
+      return type === 'webgl2' ? null : Reflect.apply(getContext, this, [type, ...args]);
+    } as typeof getContext;
+  });
+  await page.goto('/');
+  await expect(page.getByRole('alert')).toContainText('WebGL 2');
+  await page.getByRole('button', { name: 'Charaktere' }).click();
+  await page.getByRole('region', { name: 'Charaktere' }).getByRole('button', { name: /Ada/ }).click();
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(page.getByRole('button', { name: 'Freigeben' })).toBeVisible();
+  await page.getByRole('button', { name: 'Orte' }).click();
+  await page.getByRole('region', { name: 'Orte' }).getByRole('button', { name: /Café Tide/ }).click();
+  await expect(page.getByRole('button', { name: 'Zu Fuß gehen' })).toBeVisible();
 });

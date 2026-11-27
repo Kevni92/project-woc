@@ -10,11 +10,11 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
+      command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort --bypass-lock',
       url: 'http://127.0.0.1:4173',
     },
     {
-      command: 'npm run dev -- --host 127.0.0.1 --port 4174 --strictPort',
+      command: 'npm run dev -- --host 127.0.0.1 --port 4174 --strictPort --bypass-lock',
       url: 'http://127.0.0.1:4174',
     },
   ],

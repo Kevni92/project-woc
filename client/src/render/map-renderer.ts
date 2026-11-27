@@ -15,6 +15,7 @@ export interface MapFrame {
   readonly water?: ScreenAnchor;
   readonly locations: ReadonlyMap<string, MarkerLayout>;
   readonly characters: ReadonlyMap<string, MarkerLayout>;
+  readonly building?: ScreenAnchor;
   readonly detail: number;
   readonly northAngle: number;
   readonly labelColor: string;
@@ -35,10 +36,13 @@ export class MapRenderer {
   private readonly districts: Anchor[];
   private readonly water: Anchor;
   private readonly locations: Anchor[];
+  private readonly buildings: ReadonlyMap<string, Anchor>;
   private readonly raycaster = new Raycaster();
   private readonly fingers = new Map<number, Vector2>();
   private pointerStart?: Vector2;
   private dragged = false;
+  private rotating = false;
+  private selectedBuilding?: string;
   private characters: readonly Anchor[] = [];
   private daylight = -1;
   private labelColor = '';
@@ -66,6 +70,10 @@ export class MapRenderer {
       position: location.position,
       height: location.building ? heights.get(location.building) : undefined,
     }));
+    this.buildings = new Map(city.buildings.map(({ id, footprint, height }) => {
+      const center = footprint.reduce(([x, z], [px, pz]) => [x + px, z + pz], [0, 0]);
+      return [id, { id, position: [center[0] / footprint.length, center[1] / footprint.length], height }];
+    }));
     this.scene.add(this.geography.group);
     this.routeLine.visible = false;
     this.routeLine.frustumCulled = false;
@@ -79,6 +87,7 @@ export class MapRenderer {
     canvas.addEventListener('pointerup', this.pointerUp, { signal });
     canvas.addEventListener('pointercancel', this.pointerCancel, { signal });
     canvas.addEventListener('lostpointercapture', this.pointerCancel, { signal });
+    canvas.addEventListener('contextmenu', this.contextMenu, { signal });
 
     this.observer = new ResizeObserver(() => this.resize());
     this.resize();
@@ -112,7 +121,18 @@ export class MapRenderer {
   }
 
   selectBuilding(id?: string) {
+    this.selectedBuilding = id;
     this.geography.selectBuilding(id);
+    this.invalidate();
+  }
+
+  rotate(radians: number) {
+    this.view.rotate(radians);
+    this.invalidate();
+  }
+
+  orientNorth() {
+    this.view.orientNorth();
     this.invalidate();
   }
 
@@ -180,14 +200,17 @@ export class MapRenderer {
       return [{ id, x: (projected.x + 1) * this.width / 2, y: (1 - projected.y) * this.height / 2 }];
     });
     const metersPerPixel = verticalSpan / this.height;
-    const scale = [500, 200, 100, 50, 20, 10, 5, 2, 1].find(meters => meters <= metersPerPixel * 108) ?? 1;
+    const maxScaleWidth = this.width <= 380 ? 54 : 108;
+    const scale = [500, 200, 100, 50, 20, 10, 5, 2, 1].find(meters => meters <= metersPerPixel * maxScaleWidth) ?? 1;
     const characters = project(this.characters);
     const layout = layoutMarkers([...characters, ...project(this.locations)], this.width, this.height);
+    const building = this.selectedBuilding ? this.buildings.get(this.selectedBuilding) : undefined;
     this.onFrame({
       districts: new Map(project(this.districts).map(anchor => [anchor.id, anchor])),
       water: project([this.water])[0],
       locations: new Map(layout.slice(characters.length).map(anchor => [anchor.id, anchor])),
       characters: new Map(layout.slice(0, characters.length).map(anchor => [anchor.id, anchor])),
+      building: building && project([building])[0],
       detail,
       northAngle: this.view.northAngle,
       labelColor: this.labelColor,
@@ -207,6 +230,7 @@ export class MapRenderer {
   }
 
   private readonly wheel = (event: WheelEvent) => {
+    if ((event.target as Element).closest('[data-map-overlay]')) return;
     event.preventDefault();
     const pixels = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.height : 1);
     const factor = Math.exp(Math.max(-1.4, Math.min(1.4, pixels * 0.0018)));
@@ -215,13 +239,15 @@ export class MapRenderer {
   };
 
   private readonly pointerDown = (event: PointerEvent) => {
-    if (event.button !== 0 || this.fingers.size === 2) return;
+    if (![0, 2].includes(event.button) || this.fingers.size === 2) return;
+    if (this.fingers.size && event.pointerType !== 'touch') return;
     this.view.stop();
     this.canvas.setPointerCapture(event.pointerId);
     this.fingers.set(event.pointerId, new Vector2(event.clientX, event.clientY));
     if (this.fingers.size === 1) {
       this.pointerStart = new Vector2(event.clientX, event.clientY);
       this.dragged = false;
+      this.rotating = event.button === 2 || event.shiftKey;
     } else {
       this.dragged = true;
       this.canvas.classList.add('dragging');
@@ -243,6 +269,8 @@ export class MapRenderer {
       const nextCenter = midpoint(current);
       this.view.pan(midpoint(previous), nextCenter);
       this.view.zoom(Math.max(1, previous.distanceTo(other)) / Math.max(1, current.distanceTo(other)), nextCenter, true);
+    } else if (this.rotating) {
+      this.view.rotate((current.x - dragFrom.x) * 0.009, true);
     } else {
       this.view.pan(this.screen(dragFrom.x, dragFrom.y), this.screen(current.x, current.y));
     }
@@ -252,7 +280,7 @@ export class MapRenderer {
   private readonly pointerUp = (event: PointerEvent) => {
     if (!this.fingers.has(event.pointerId)) return;
     this.pointerCancel(event);
-    if (this.dragged) return;
+    if (this.dragged || this.rotating) return;
     this.raycaster.setFromCamera(this.screen(event.clientX, event.clientY), this.view.camera);
     const hits = this.raycaster.intersectObjects(this.geography.buildingMeshes, false);
     const building = hits.find(hit => hit.object.visible && hit.object.parent?.visible);
@@ -262,5 +290,9 @@ export class MapRenderer {
   private readonly pointerCancel = (event: PointerEvent) => {
     this.fingers.delete(event.pointerId);
     if (!this.fingers.size) this.canvas.classList.remove('dragging');
+  };
+
+  private readonly contextMenu = (event: MouseEvent) => {
+    if (this.rotating && this.dragged) event.preventDefault();
   };
 }

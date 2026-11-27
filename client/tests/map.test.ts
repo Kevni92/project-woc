@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import definition from '../../content/breakwater.json';
 import { city, parseCity } from '../src/render/city-data';
 import type { Point } from '../src/render/city-data';
-import { layoutMarkers } from '../src/render/map-anchors';
+import { layoutMarkers, placePopover } from '../src/render/map-anchors';
 import { detailAt, MapCamera } from '../src/render/map-camera';
 import { paletteAt, twilight } from '../src/render/palette';
 import type { ClientState } from '../src/simulation/simulation-client';
@@ -87,6 +87,52 @@ describe('map presentation', () => {
     expect(ben).toMatchObject(anchors[1]);
     expect(cafe).toMatchObject(anchors[2]);
     expect(Math.hypot(ben.x + ben.dx - cafe.x - cafe.dx, ben.y + ben.dy - cafe.y - cafe.dy)).toBeGreaterThan(34);
+  });
+
+  test('rotates in both directions around the pivot with stable projection and cursor zoom', () => {
+    const view = new MapCamera(city.bounds);
+    view.resize(1440, 960);
+    const pivot = new Vector3(40, 0, 10);
+    const pointer = new Vector2(0.43, -0.34);
+    const north = pivot.clone().add(new Vector3(0, 0, -20));
+    view.advance(0, true);
+    for (const direction of [1, -1]) {
+      for (let quarter = 1; quarter <= 4; quarter++) {
+        view.rotate(direction * Math.PI / 2, true);
+        expect(view.groundAt(new Vector2()).distanceTo(pivot)).toBeLessThan(1e-6);
+        const screen = north.clone().project(view.camera);
+        const projectedAngle = Math.atan2(screen.x * 1.5, screen.y);
+        expect(Math.sin(projectedAngle - view.northAngle)).toBeCloseTo(0);
+        expect(Math.cos(projectedAngle - view.northAngle)).toBeCloseTo(1);
+        expect(Math.sin(view.northAngle)).toBeCloseTo(Math.sin(direction * quarter * Math.PI / 2));
+      }
+    }
+    view.rotate(Math.PI - 0.05, true);
+    view.rotate(0.1);
+    view.advance(1 / 60);
+    expect(view.northAngle).toBeGreaterThan(Math.PI - 0.05);
+    view.advance(0, true);
+    const world = view.groundAt(pointer);
+    view.zoom(0.08, pointer);
+    view.advance(0, true);
+    expect(view.detail).toBe(1);
+    expect(view.groundAt(pointer).distanceTo(world)).toBeLessThan(1e-6);
+    view.focus([40, 10]);
+    view.resize(375, 812);
+    view.advance(0, true);
+    expect(view.groundAt(new Vector2()).distanceTo(pivot)).toBeLessThan(1e-6);
+    expect(Math.abs(view.northAngle)).toBeGreaterThan(3);
+    view.orientNorth();
+    view.advance(0, true);
+    expect(view.northAngle).toBeCloseTo(0);
+  });
+
+  test('places context beside the pin and clamps against the HUD bounds', () => {
+    const area = { left: 15, top: 110, width: 900, height: 600 };
+    expect(placePopover(area, 240, 150, { id: 'pin', x: 880, y: 120 }))
+      .toEqual({ left: 616, top: 110, x: 856, y: 120 });
+    expect(placePopover(area, 240, 150, { id: 'pin', x: 0, y: 716 })).toMatchObject({ left: 24, top: 560 });
+    expect(placePopover(area, 240, 150)).toEqual({ left: 675, top: 110 });
   });
 
   test('blends the palette by server game minutes and wraps at midnight', () => {

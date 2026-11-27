@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { Snippet } from 'svelte';
   import { city } from '../render/city-data';
   import { MapRenderer } from '../render/map-renderer';
-  import type { MarkerLayout } from '../render/map-anchors';
+  import { pinPosition, type MarkerLayout } from '../render/map-anchors';
   import type { MapFrame } from '../render/map-renderer';
   import type { Point } from '../render/city-data';
   import type { Route } from '../simulation/protocol';
   import type { CharacterMarker } from './map-projection';
+  import MapPopover from './MapPopover.svelte';
   import './map.css';
 
   interface Props {
@@ -15,24 +17,31 @@
     route?: Route;
     selection?: { kind: 'location' | 'building' | 'character'; id: string };
     focusPoint?: Point;
-    onselect: (selection: Props['selection']) => void;
+    onselect: (selection: Props['selection'], origin?: HTMLElement) => void;
+    details?: Snippet;
   }
 
-  let { markers, gameMinutes, route, selection, focusPoint, onselect }: Props = $props();
+  let { markers, gameMinutes, route, selection, focusPoint, onselect, details }: Props = $props();
   let canvas: HTMLCanvasElement;
+  let surface: HTMLElement;
   let container: HTMLElement;
   let renderer = $state.raw<MapRenderer>();
   let frame = $state.raw<MapFrame>();
-  let failed = $state(false);
+  let failure = $state('');
+  const selectedPin = $derived(selection?.kind === 'character' ? frame?.characters.get(selection.id)
+    : selection?.kind === 'location' ? frame?.locations.get(selection.id) : undefined);
+  const anchor = $derived(selectedPin ? pinPosition(selectedPin)
+    : selection?.kind === 'building' && frame?.building?.id === selection.id ? frame.building : undefined);
+  const pins = $derived(frame ? [...frame.characters.values(), ...frame.locations.values()].map(pinPosition) : []);
+  const turn = Math.PI / 6;
 
   onMount(() => {
     try {
       renderer = new MapRenderer(container, canvas, city, value => { frame = value; }, id => {
         onselect(id ? { kind: 'building', id } : undefined);
       });
-    } catch (error) {
-      console.error(error);
-      failed = true;
+    } catch {
+      failure = 'Die Karte braucht WebGL 2. Orte und Charaktere sind über die Listen verfügbar.';
     }
     return () => renderer?.dispose();
   });
@@ -60,17 +69,23 @@
     renderer?.focus(position);
   }
 
+  export function focusSurface() {
+    surface.focus({ preventScroll: true });
+  }
+
   function keydown(event: KeyboardEvent) {
-    switch (event.key) {
+    switch (event.key.toLowerCase()) {
       case '+':
       case '=': renderer?.zoom(0.64); break;
       case '-': renderer?.zoom(1 / 0.64); break;
-      case 'ArrowLeft': renderer?.pan(-0.22, 0); break;
-      case 'ArrowRight': renderer?.pan(0.22, 0); break;
-      case 'ArrowUp': renderer?.pan(0, -0.22); break;
-      case 'ArrowDown': renderer?.pan(0, 0.22); break;
-      case 'Home': renderer?.reset(); break;
-      case 'Escape': onselect(undefined); break;
+      case 'arrowleft': renderer?.pan(-0.22, 0); break;
+      case 'arrowright': renderer?.pan(0.22, 0); break;
+      case 'arrowup': renderer?.pan(0, -0.22); break;
+      case 'arrowdown': renderer?.pan(0, 0.22); break;
+      case 'q': renderer?.rotate(-turn); break;
+      case 'e': renderer?.rotate(turn); break;
+      case 'n': renderer?.orientNorth(); break;
+      case 'home': renderer?.reset(); break;
       default: return;
     }
     event.preventDefault();
@@ -88,8 +103,9 @@
 <section bind:this={container} class="map-viewport" aria-label="Stadtkarte" style:--map-label={frame?.labelColor}>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (The application is a keyboard-operated spatial canvas.) -->
   <div class="map-surface"
+    bind:this={surface}
     role="application"
-    tabindex={failed ? -1 : 0}
+    tabindex={failure ? -1 : 0}
     aria-label={'Interaktive Karte von ' + city.name}
     aria-describedby="map-help"
     onkeydown={keydown}
@@ -97,12 +113,12 @@
     <canvas bind:this={canvas}></canvas>
   </div>
   <p id="map-help" class="sr-only">
-    Mit den Pfeiltasten verschieben, mit Plus und Minus zoomen, mit Pos1 zurücksetzen.
-    Orte und Charaktere lassen sich auch in der Seitenleiste auswählen.
+    Mit den Pfeiltasten verschieben, mit Plus und Minus zoomen. Q und E drehen, N richtet nach Norden aus.
+    Pos1 setzt die Übersicht zurück. Orte und Charaktere lassen sich auch in den Listen auswählen.
   </p>
 
-  {#if failed}
-    <p class="map-failure" role="alert">Die Karte braucht WebGL 2. Orte und Charaktere sind über die Liste verfügbar.</p>
+  {#if failure}
+    <p class="map-failure" role="alert">{failure}</p>
   {:else if frame}
     {@const water = frame.water}
     <div class="map-labels" aria-hidden="true">
@@ -125,7 +141,7 @@
           {@render leader(anchor)}
           <button class="location-pin" class:active class:label-above={anchor.dy < 0} aria-label={location.name} aria-pressed={active}
             style:left={anchor.x + anchor.dx + 'px'} style:top={anchor.y + anchor.dy + 'px'}
-            onclick={() => onselect({ kind: 'location', id: location.id })}>
+            onclick={event => onselect({ kind: 'location', id: location.id }, event.currentTarget)}>
             <span class="pin-dot" aria-hidden="true"></span><span class="pin-label">{location.name}</span>
           </button>
         {/if}
@@ -140,7 +156,7 @@
           {@render leader(anchor)}
           <button class="character-pin {marker.kind}" class:active aria-label={marker.name} aria-pressed={active}
             style:left={anchor.x + anchor.dx + 'px'} style:top={anchor.y + anchor.dy + 'px'}
-            onclick={() => onselect({ kind: 'character', id: marker.id })}>
+            onclick={event => onselect({ kind: 'character', id: marker.id }, event.currentTarget)}>
             <span class="marker-symbol" aria-hidden="true"></span>
             <span class="character-label" aria-hidden="true">{marker.name}</span>
           </button>
@@ -148,23 +164,30 @@
       {/each}
     </div>
 
-    <div class="compass" title="Kartennorden" aria-label="Kartennorden">
-      <span>N</span><i style:transform={'rotate(' + frame.northAngle + 'rad)'}></i>
-    </div>
-    <div class="map-mode" aria-label="Kartendarstellung">{frame.detail === 0 ? '2D' : '3D'}</div>
     <div class="map-scale" aria-label={'Maßstab ' + frame.scale + ' Meter'}>
       <span>{frame.scale} m</span>
       <span class="scale-line" style:width={frame.scaleWidth + 'px'}></span>
     </div>
-    <div class="map-controls" role="group" aria-label="Kartensteuerung">
+    <div class="map-controls" role="group" aria-label="Kartensteuerung" data-map-overlay>
+      <div class="map-mode" aria-label="Kartendarstellung">{frame.detail === 0 ? '2D' : '3D'}</div>
+      <button class="compass" onclick={() => renderer?.orientNorth()} aria-label="Nach Norden ausrichten" title="Nach Norden ausrichten (N)">
+        <i style:transform={'rotate(' + frame.northAngle + 'rad)'}></i><span>N</span>
+      </button>
+      <div class="control-pair rotation-controls">
+        <button onclick={() => renderer?.rotate(-turn)} aria-label="Nach links drehen" title="Nach links drehen (Q)">↶</button>
+        <button onclick={() => renderer?.rotate(turn)} aria-label="Nach rechts drehen" title="Nach rechts drehen (E)">↷</button>
+      </div>
       <button class="focus-button" onclick={() => focus(focusPoint ?? city.start)}
         aria-label={focusPoint ? 'Eigenen Charakter fokussieren' : 'Startbereich fokussieren'}
         title={focusPoint ? 'Eigenen Charakter fokussieren' : 'Startbereich fokussieren'}>⌖</button>
-      <div class="zoom-controls">
+      <div class="control-pair zoom-controls">
         <button onclick={() => renderer?.zoom(0.64)} aria-label="Vergrößern" title="Vergrößern">+</button>
         <button onclick={() => renderer?.zoom(1 / 0.64)} aria-label="Verkleinern" title="Verkleinern">−</button>
       </div>
       <button onclick={() => renderer?.reset()} aria-label="Karte zurücksetzen" title="Karte zurücksetzen">↺</button>
     </div>
+  {/if}
+  {#if details}
+    <MapPopover {anchor} {pins}>{@render details()}</MapPopover>
   {/if}
 </section>
